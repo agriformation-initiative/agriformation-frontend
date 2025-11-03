@@ -24,7 +24,7 @@ const poppins = Poppins({
 // });
 
 export const metadata = {
-  title: 'AgriVision Nigeria - Transforming Young Minds, Growing Future Leaders',
+  title: 'Agriformation - Transforming Young Minds, Growing Future Leaders',
   description: 'Empowering young minds to see agriculture not as a last resort, but as a pathway to innovation, prosperity, and sustainable impact.',
 }
 
