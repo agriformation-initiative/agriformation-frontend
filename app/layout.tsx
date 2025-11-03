@@ -6,7 +6,7 @@ import {Footer} from '@/components/shared/Footer';
 import './globals.css';
 
 const inter = Inter({
-  subsets: ['latin'],
+  subsets: ['latin'], 
   display: 'swap',
   variable: '--font-inter',
 });
