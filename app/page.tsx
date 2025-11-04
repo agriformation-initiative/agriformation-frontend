@@ -15,10 +15,10 @@ export default function HomePage() {
             <div className="lg:col-span-6 pt-8">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-900/5 text-green-800 rounded text-sm font-medium mb-6 border border-emerald-900/10">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-700"></span>
-                Agricultural Education in Nigeria
+                Transforming Agricultural Education in Nigeria
               </div>
               <h1 className="text-[2.75rem] md:text-6xl font-bold text-stone-900 leading-[1.08] mb-6 tracking-tight">
-                Making Agriculture <span className="text-green-700 italic font-serif">Innovation</span>, Not Punishment
+                Make Agriculture <span className="text-green-700 italic font-serif">Innovation</span>
               </h1>
               <p className="text-[1.1rem] text-stone-600 mb-9 leading-[1.7] font-light">
                 We bridge the gap between theory and practice, showing Nigerian students that agriculture is a field of dignity, opportunity, and national development.
@@ -32,7 +32,7 @@ export default function HomePage() {
                 <Link href='/volunteer'
                   className="px-6 py-3 bg-stone-100 text-stone-800 rounded font-medium hover:bg-stone-200 transition-colors border border-stone-300"
                 >
-                  Volunteer With Us
+                  Partner With Us
                 </Link>
               </div>
             </div>
