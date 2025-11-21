@@ -88,6 +88,7 @@ export interface ApiResponse<T> {
 export interface PaginatedResponse<T> {
   success: boolean;
   data: {
+    users(users: any): unknown;
     applications(applications: any): unknown;
     items: T[];
     totalPages: number;

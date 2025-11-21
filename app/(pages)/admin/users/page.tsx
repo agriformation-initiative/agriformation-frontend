@@ -19,17 +19,20 @@ export default function UsersPage() {
     loadUsers();
   }, []);
 
-const loadUsers = async () => {
-  try {
-    const response = await adminService.getAllUsers();
-    setUsers(response.data.items); // Change from .users to .items
-  } catch (error) {
-    console.error('Failed to load users:', error);
-    toast.error('Failed to load users');
-  } finally {
-    setLoading(false);
-  }
-};
+  const loadUsers = async () => {
+    try {
+      const response = await adminService.getAllUsers();
+      // Handle both possible response structures
+      const usersList = response?.data?.items || response?.data?.users || [];
+      setUsers(Array.isArray(usersList) ? usersList : []);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+      toast.error('Failed to load users');
+      setUsers([]); // Set empty array on error
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleToggleStatus = async (id: string) => {
     try {
@@ -81,32 +84,40 @@ const loadUsers = async () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-200">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-stone-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-stone-900 font-medium">{user.fullName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-stone-600">{user.email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <RoleBadge role={user.role} />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <StatusBadge isActive={user.isActive} />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-stone-600">
-                      {format(new Date(user.createdAt), 'MMM dd, yyyy')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {user.role !== 'superadmin' && (
-                        <button
-                          onClick={() => handleToggleStatus(user.id)}
-                          className="p-2 text-green-700 hover:bg-green-50 rounded transition-colors"
-                          title={user.isActive ? 'Deactivate' : 'Activate'}
-                        >
-                          {user.isActive ? <FaToggleOn size={20} /> : <FaToggleOff size={20} />}
-                        </button>
-                      )}
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-8 text-center text-stone-500">
+                      No users found
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  users.map((user) => (
+                    <tr key={user.id} className="hover:bg-stone-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-stone-900 font-medium">{user.fullName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-stone-600">{user.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <RoleBadge role={user.role} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <StatusBadge isActive={user.isActive} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-stone-600">
+                        {format(new Date(user.createdAt), 'MMM dd, yyyy')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {user.role !== 'superadmin' && (
+                          <button
+                            onClick={() => handleToggleStatus(user.id)}
+                            className="p-2 text-green-700 hover:bg-green-50 rounded transition-colors"
+                            title={user.isActive ? 'Deactivate' : 'Activate'}
+                          >
+                            {user.isActive ? <FaToggleOn size={20} /> : <FaToggleOff size={20} />}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
