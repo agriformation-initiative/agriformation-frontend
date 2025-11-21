@@ -2,12 +2,20 @@
 import React from 'react';
 import { Facebook, Instagram, Linkedin } from 'lucide-react';
 import Image from 'next/image';
+import { usePathname } from "next/navigation";
+
 
 export const Footer = () => {
   const navigateTo = (path: string) => {
     console.log(`Navigating to ${path}`);
     window.scrollTo(0, 0);
   };
+
+  const pathname = usePathname();
+  if (pathname === '/admin/' || pathname.startsWith('/admin/') || pathname === '/account' || pathname.startsWith('/dashboard/') ) {
+    return null;
+  }
+
 
   return (
     <footer className="bg-stone-900 text-stone-300 py-16 border-t border-stone-800">

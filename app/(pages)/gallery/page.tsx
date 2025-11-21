@@ -1,14 +1,63 @@
 'use client';
-import React from 'react';
-import { ChevronRight, Calendar, Users } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ChevronRight, Calendar, Users, Loader2, FolderOpen } from 'lucide-react';
 import Image from 'next/image';
+import { galleryService } from '@/services/galleryService';
+import { Gallery } from '@/types/indexes';
+import { useRouter } from 'next/navigation';
 
 export default function GalleryPage() {
+  const router = useRouter();
+  const [featuredGalleries, setFeaturedGalleries] = useState<Gallery[]>([]);
+  const [allGalleries, setAllGalleries] = useState<Gallery[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  const categories = [
+    { value: 'all', label: 'All Programs' },
+    { value: 'farm_excursion', label: 'Farm Excursions' },
+    { value: 'workshop', label: 'Workshops' },
+    { value: 'community_event', label: 'Community Events' },
+    { value: 'training', label: 'Training Sessions' },
+    { value: 'other', label: 'Other' },
+  ];
+
+  useEffect(() => {
+    fetchGalleries();
+  }, [selectedCategory]);
+
+  const fetchGalleries = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch featured galleries
+      const featuredRes = await galleryService.getFeaturedGalleries();
+      setFeaturedGalleries(featuredRes.data.galleries);
+
+      // Fetch all galleries with optional category filter
+      const params = selectedCategory !== 'all' ? { category: selectedCategory } : {};
+      const allRes = await galleryService.getPublishedGalleries(params);
+      setAllGalleries(allRes.data.items);
+    } catch (error) {
+      console.error('Error fetching galleries:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const scrollTo = (id: string) => {
     const el = document.querySelector(id);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   };
 
   return (
@@ -50,136 +99,147 @@ export default function GalleryPage() {
         </div>
       </section>
 
+      {/* Featured Galleries */}
+      {featuredGalleries.length > 0 && (
+        <section className="py-20 px-5 md:px-8 bg-white border-y border-stone-200">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-12">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-900/5 text-green-800 rounded text-sm font-medium mb-6 border border-green-900/10">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-600"></span>
+                Featured
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold text-stone-900 mb-5 leading-tight tracking-tight">
+                Recent Highlights
+              </h2>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredGalleries.slice(0, 3).map((gallery) => (
+                <div
+                  key={gallery._id}
+                  onClick={() => router.push(`/gallery/${gallery._id}`)}
+                  className="group cursor-pointer"
+                >
+                  <div className="aspect-[4/3] rounded-sm overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-stone-200 mb-4">
+                    <Image
+                      src={gallery.coverImage?.url || '/images/placeholder.jpg'}
+                      width={600}
+                      height={450}
+                      alt={gallery.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-green-700 font-medium">
+                      <Calendar size={14} />
+                      <span>{formatDate(gallery.eventDate)}</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-stone-900 group-hover:text-green-700 transition-colors">
+                      {gallery.title}
+                    </h3>
+                    <p className="text-sm text-stone-600 line-clamp-2">
+                      {gallery.description}
+                    </p>
+                    <div className="flex items-center gap-4 text-xs text-stone-500">
+                      <span>{gallery.photoCount} photos</span>
+                      {gallery.location && <span>• {gallery.location}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Main Gallery Section */}
-      <section className="py-20 px-5 md:px-8 bg-white border-y border-stone-200" id="gallery">
+      <section className="py-20 px-5 md:px-8 bg-stone-50" id="gallery">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-16 max-w-3xl">
+          <div className="mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-900/5 text-green-800 rounded text-sm font-medium mb-6 border border-green-900/10">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-600"></span>
-              Our Journey
+              <FolderOpen size={16} />
+              All Albums
             </div>
             <h2 className="text-4xl md:text-5xl font-bold text-stone-900 mb-5 leading-tight tracking-tight">
-              Program Highlights
+              Explore Our Albums
             </h2>
-            <p className="text-lg text-stone-600 leading-relaxed">
-              A visual journey through our 2025-2026 programs, capturing the essence of agricultural education transformation.
+            <p className="text-lg text-stone-600 leading-relaxed mb-8">
+              Browse through our collection of program highlights and memorable moments.
             </p>
-          </div>
 
-          {/* Masonry-style Gallery */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 auto-rows-[200px]">
-            {[
-              {
-                src: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&h=800&fit=crop',
-                caption: 'School Gardens - Hands-on planting session',
-                program: 'School Gardens & Agri-Clubs',
-                span: 'lg:col-span-2 lg:row-span-2',
-              },
-              {
-                src: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&h=600&fit=crop',
-                caption: 'Agri Awareness Week - Student exhibition',
-                program: 'Agri Awareness Week',
-              },
-              {
-                src: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&h=600&fit=crop',
-                caption: 'Excursion - Visiting a modern farm',
-                program: 'Farm Excursions',
-              },
-              {
-                src: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800&h=800&fit=crop',
-                caption: 'Summer Internship - Fieldwork experience',
-                program: 'Summer Internships',
-                span: 'lg:row-span-2',
-              },
-              {
-                src: 'https://images.unsplash.com/photo-1509099836639-18ba1795216d?w=800&h=600&fit=crop',
-                caption: 'School Gardens - Harvest celebration',
-                program: 'School Gardens',
-              },
-              {
-                src: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800&h=600&fit=crop',
-                caption: 'Agri Awareness Week - Teacher training',
-                program: 'Teacher Training',
-              },
-              {
-                src: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&h=600&fit=crop',
-                caption: 'Excursion - Youth workshop session',
-                program: 'Youth Workshops',
-              },
-              {
-                src: 'https://images.unsplash.com/photo-1491438590914-bc09fcaaf77a?w=800&h=800&fit=crop',
-                caption: 'Summer Internship - Mentorship moment',
-                program: 'Mentorship',
-                span: 'lg:col-span-2',
-              },
-            ].map((item, index) => (
-              <div
-                key={index}
-                className={`relative group cursor-pointer overflow-hidden rounded-sm border border-stone-200 hover:shadow-md transition-shadow ${item.span || ''}`}
-              >
-                <div className="h-full bg-stone-200">
-                  <Image
-                    src={item.src}
-                    alt={item.caption}
-                    width={500}
-                    height={500}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-stone-900/90 via-stone-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-5 text-white">
-                  <span className="text-xs font-medium uppercase tracking-wider text-green-300 mb-1">
-                    {item.program}
-                  </span>
-                  <p className="text-sm font-semibold leading-tight">{item.caption}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 2024 Excursion Highlight */}
-      <section className="py-24 px-5 md:px-8 bg-stone-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="mb-16 max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-900/5 text-green-800 rounded text-sm font-medium mb-6 border border-green-900/10">
-              <Calendar size={16} />
-              Past Event
+            {/* Category Filter */}
+            <div className="flex flex-wrap gap-3">
+              {categories.map((category) => (
+                <button
+                  key={category.value}
+                  onClick={() => setSelectedCategory(category.value)}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-all ${
+                    selectedCategory === category.value
+                      ? 'bg-green-700 text-white shadow-md'
+                      : 'bg-white text-stone-700 border border-stone-200 hover:border-green-700 hover:text-green-700'
+                  }`}
+                >
+                  {category.label}
+                </button>
+              ))}
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-stone-900 mb-5 leading-tight tracking-tight">
-              2024 Farm Excursion
-            </h2>
-            <p className="text-lg text-stone-600 leading-relaxed max-w-2xl mx-auto">
-              On June 28, 2024, Agriformation Initiative sponsored 83 SS1-SS2 students from Government Girls&apos; Secondary School Rumuokuta, Rivers State, on an excursion to Ibiteinye Integrated Farms, Elelewon.
-            </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 auto-rows-[200px]">
-            {[
-              { src: '/images/ex.jpg', caption: 'Poultry unit tour' },
-              { src: '/images/group.jpg', caption: 'Aquaculture exploration' },
-              { src: '/images/excursion.jpg', caption: 'Agro-processing demo' },
-              { src: '/images/excursion1.jpg', caption: 'Agro-processing demo' },
-            ].map((item, index) => (
-              <div
-                key={index}
-                className="group relative rounded-sm overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-stone-200"
-              >
-                <div className="aspect-[4/3] bg-stone-200">
-                  <Image
-                    src={item.src}
-                    width={500}
-                    height={500}
-                    alt={item.caption}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
+          {/* Gallery Grid */}
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-green-700" />
+            </div>
+          ) : allGalleries.length > 0 ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {allGalleries.map((gallery) => (
+                <div
+                  key={gallery._id}
+                  onClick={() => router.push(`/gallery/${gallery._id}`)}
+                  className="group cursor-pointer bg-white rounded-sm shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-stone-200"
+                >
+                  <div className="aspect-video overflow-hidden bg-stone-200">
+                    <Image
+                      src={gallery.coverImage?.url || '/images/placeholder.jpg'}
+                      width={600}
+                      height={400}
+                      alt={gallery.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <div className="p-6 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="px-2 py-1 bg-green-50 text-green-700 rounded font-medium border border-green-100">
+                        {gallery.category.replace('_', ' ')}
+                      </span>
+                      <span className="text-stone-500">{formatDate(gallery.eventDate)}</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-stone-900 group-hover:text-green-700 transition-colors line-clamp-2">
+                      {gallery.title}
+                    </h3>
+                    <p className="text-sm text-stone-600 line-clamp-2">
+                      {gallery.description}
+                    </p>
+                    <div className="flex items-center justify-between pt-3 border-t border-stone-100">
+                      <span className="text-xs text-stone-500">
+                        {gallery.photoCount} {gallery.photoCount === 1 ? 'photo' : 'photos'}
+                      </span>
+                      {gallery.location && (
+                        <span className="text-xs text-stone-500 truncate max-w-[150px]">
+                          {gallery.location}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-green-900/90 to-transparent p-4 text-white transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                  <p className="font-medium text-sm">{item.caption}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20">
+              <FolderOpen className="w-16 h-16 mx-auto text-stone-300 mb-4" />
+              <p className="text-stone-500 text-lg">No galleries found in this category.</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -201,17 +261,17 @@ export default function GalleryPage() {
               {
                 quote: "I never knew agriculture could be this modern. I saw computers controlling greenhouses!",
                 student: "Student, SS2",
-                emoji: "amazed",
+                emoji: "🤩",
               },
               {
                 quote: "This trip changed my mind about farming. I want to study Agribusiness now.",
                 student: "Student, SS1",
-                emoji: "lightbulb",
+                emoji: "💡",
               },
               {
                 quote: "Agriculture is not about punishment anymore. It's about innovation and technology.",
                 student: "Student, SS2",
-                emoji: "rocket",
+                emoji: "🚀",
               },
             ].map((testimonial, index) => (
               <div

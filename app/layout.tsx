@@ -4,6 +4,8 @@ import { Inter, Poppins } from 'next/font/google';
 import { Navigation } from '@/components/shared/Navbar';
 import {Footer} from '@/components/shared/Footer';
 import './globals.css';
+import { AuthProvider } from '@/lib/context/AuthContext';
+import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({
   subsets: ['latin'], 
@@ -36,9 +38,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className={`${inter.variable} ${poppins.variable} $`}>
       <body className="font-inter antialiased">
-        <Navigation/>
-        {children}
-        <Footer/>
+        <AuthProvider>
+          <Navigation/>
+          {children}
+          <Footer/>
+          <Toaster position="top-right" />
+        </AuthProvider>
       </body>
     </html>
   );
