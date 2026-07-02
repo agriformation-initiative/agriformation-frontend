@@ -14,10 +14,10 @@ export const Navigation = () => {
 
   // Early return AFTER all hooks are called
   if (
-    pathname === '/admin/' ||
-    pathname.startsWith('/admin/') ||
-    pathname === '/account' ||
-    pathname.startsWith('/dashboard/')
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/volunteer/dashboard') ||
+    pathname.startsWith('/volunteer/profile') ||
+    pathname.startsWith('/dashboard')
   ) {
     return null;
   }
@@ -56,6 +56,11 @@ export const Navigation = () => {
               className={`px-4 py-2 text-sm font-medium transition-colors ${currentPath === '/gallery' ? 'text-green-800' : 'text-stone-600 hover:text-stone-900'}`}
             >
               Gallery
+            </Link>
+            <Link href='/blog'
+              className={`px-4 py-2 text-sm font-medium transition-colors ${currentPath.startsWith('/blog') ? 'text-green-800' : 'text-stone-600 hover:text-stone-900'}`}
+            >
+              Blog
             </Link>
             <Link href='/contact'
               className={`px-4 py-2 text-sm font-medium transition-colors ${currentPath === '/contact' ? 'text-green-800' : 'text-stone-600 hover:text-stone-900'}`}

@@ -1,4 +1,3 @@
-import { Key, ReactNode } from "react";
 
 export interface User {
   id: string;
@@ -21,7 +20,7 @@ export interface AuthResponse {
 }
 
 export interface Volunteer {
-  firstName: ReactNode;
+  firstName?: string;
   _id: string;
   user: User | string;
   preferredRole: string;
@@ -58,7 +57,7 @@ export interface VolunteerApplication {
 }
 
 export interface Program {
-  id: Key | null | undefined;
+  id?: string;
   programName: string;
   role: string;
   startDate: string;
@@ -88,8 +87,9 @@ export interface ApiResponse<T> {
 export interface PaginatedResponse<T> {
   success: boolean;
   data: {
-    users(users: any): unknown;
-    applications(applications: any): unknown;
+    users?: User[];
+    volunteers?: Volunteer[];
+    applications?: VolunteerApplication[];
     items: T[];
     totalPages: number;
     currentPage: number;

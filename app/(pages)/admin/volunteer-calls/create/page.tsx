@@ -2,13 +2,15 @@
 'use client';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Upload, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Upload, X, Send } from 'lucide-react';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import Image from 'next/image';
+import toast from 'react-hot-toast';
 
 export default function CreateVolunteerCallPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   
@@ -101,14 +103,11 @@ export default function CreateVolunteerCallPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const submitCall = async (publish: boolean) => {
     if (!validateForm()) return;
 
+    publish ? setPublishing(true) : setLoading(true);
     try {
-      setLoading(true);
-
       const formDataToSend = new FormData();
       formDataToSend.append('title', formData.title);
       formDataToSend.append('description', formData.description);
@@ -118,16 +117,13 @@ export default function CreateVolunteerCallPage() {
       formDataToSend.append('numberOfVolunteers', formData.numberOfVolunteers);
       formDataToSend.append('deadline', formData.deadline);
       formDataToSend.append('category', formData.category);
-      if (imageFile) {
-        formDataToSend.append('designImage', imageFile);
-      }
+      if (publish) formDataToSend.append('isPublished', 'true');
+      if (imageFile) formDataToSend.append('designImage', imageFile);
 
       const token = localStorage.getItem('token');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/volunteer-calls`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formDataToSend,
       });
 
@@ -137,13 +133,19 @@ export default function CreateVolunteerCallPage() {
         throw new Error(data.message || 'Failed to create volunteer call');
       }
 
+      toast.success(publish ? 'Volunteer call published!' : 'Saved as draft');
       router.push('/admin/volunteer-calls');
     } catch (error: any) {
-      console.error('Error creating volunteer call:', error);
-      alert(error.message || 'Failed to create volunteer call');
+      toast.error(error.message || 'Failed to create volunteer call');
     } finally {
       setLoading(false);
+      setPublishing(false);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitCall(false);
   };
 
   return (
@@ -392,25 +394,44 @@ export default function CreateVolunteerCallPage() {
             </div>
 
             {/* Submit Buttons */}
-            <div className="flex gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <button
                 type="submit"
-                disabled={loading}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-700 text-white rounded-md font-medium hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || publishing}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 border-2 border-green-700 text-green-700 rounded-md font-medium hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <>
                     <Loader2 className="animate-spin" size={20} />
-                    Creating...
+                    Saving...
                   </>
                 ) : (
-                  'Create Volunteer Call'
+                  'Save as Draft'
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => submitCall(true)}
+                disabled={loading || publishing}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-700 text-white rounded-md font-medium hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {publishing ? (
+                  <>
+                    <Loader2 className="animate-spin" size={20} />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <Send size={18} />
+                    Create & Publish
+                  </>
                 )}
               </button>
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="px-6 py-3 border border-stone-300 text-stone-700 rounded-md font-medium hover:bg-stone-50 transition-colors"
+                disabled={loading || publishing}
+                className="px-6 py-3 border border-stone-300 text-stone-700 rounded-md font-medium hover:bg-stone-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>

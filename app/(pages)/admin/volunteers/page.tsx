@@ -7,6 +7,7 @@ import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { adminService } from '@/services/adminService';
 import { Volunteer } from '@/types/indexes';
 import { FaEye } from 'react-icons/fa';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 export default function VolunteersPage() {
   const router = useRouter();
@@ -120,16 +121,3 @@ export default function VolunteersPage() {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const colors = {
-    pending: 'bg-amber-50 text-amber-800 border border-amber-200',
-    approved: 'bg-emerald-900/5 text-green-700 border border-emerald-900/10',
-    rejected: 'bg-red-50 text-red-800 border border-red-200',
-    'on-hold': 'bg-stone-100 text-stone-600 border border-stone-200',
-  };
-  return (
-    <span className={`px-3 py-1.5 rounded text-xs font-medium ${colors[status as keyof typeof colors]}`}>
-      {status}
-    </span>
-  );
-}

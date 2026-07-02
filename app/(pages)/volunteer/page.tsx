@@ -1,7 +1,7 @@
-/*eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 import { useState, useEffect } from 'react';
-import { ChevronRight, Send, Users, Leaf, Camera, Handshake, Award, Calendar, MapPin, Clock, X, Loader2, CheckCircle, Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ChevronRight, Send, Users, Leaf, Camera, Handshake, Award, Calendar, MapPin, Loader2, CheckCircle, Search } from 'lucide-react';
 import Image from 'next/image';
 
 const ROLES = [
@@ -57,15 +57,14 @@ interface FormErrors {
 }
 
 export default function UnifiedVolunteerPage() {
-  const [activeTab, setActiveTab] = useState<string>('general');
-  const [selectedCall, setSelectedCall] = useState<VolunteerCall | null>(null);
+  const router = useRouter();
   const [calls, setCalls] = useState<VolunteerCall[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitted, setSubmitted] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  
+
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
     email: '',
@@ -89,16 +88,14 @@ export default function UnifiedVolunteerPage() {
     }
 
     const url = `${process.env.NEXT_PUBLIC_API_URL}/volunteer-calls${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-    console.log('Fetching from:', url);
 
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const data = await response.json();
-    console.log('API Response:', data);
     
     if (data.success && data.data && Array.isArray(data.data.calls)) {
       setCalls(data.data.calls);
@@ -129,91 +126,40 @@ export default function UnifiedVolunteerPage() {
     }
   };
 
-  const validateForm = (isSpecificCall: boolean) => {
+  const validateForm = () => {
     const newErrors: FormErrors = {};
-
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    }
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
-    }
-    
-    if (isSpecificCall) {
-      if (!formData.phoneNumber.trim()) {
-        newErrors.phoneNumber = 'Phone number is required';
-      }
-    } else {
-      if (!formData.preferredRole) {
-        newErrors.preferredRole = 'Please select a role';
-      }
-      if (!formData.aboutYourself.trim()) {
-        newErrors.aboutYourself = 'Please tell us about yourself';
-      } else if (formData.aboutYourself.length < 50) {
-        newErrors.aboutYourself = 'Please provide at least 50 characters';
-      }
-    }
-
+    if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
+    if (!formData.email.trim()) newErrors.email = 'Email is required';
+    else if (!/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.email = 'Please enter a valid email';
+    if (!formData.preferredRole) newErrors.preferredRole = 'Please select a role';
+    if (!formData.aboutYourself.trim()) newErrors.aboutYourself = 'Please tell us about yourself';
+    else if (formData.aboutYourself.length < 50) newErrors.aboutYourself = 'Please provide at least 50 characters';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const isSpecificCall = !!selectedCall;
-
-    if (!validateForm(isSpecificCall)) return;
-
+    if (!validateForm()) return;
     setSubmitting(true);
     try {
-      const url = isSpecificCall
-        ? `${process.env.NEXT_PUBLIC_API_URL}/volunteer-calls/${selectedCall._id}/apply`
-        : `${process.env.NEXT_PUBLIC_API_URL}/volunteer/apply`;
-
-      const payload = isSpecificCall
-        ? {
-            fullName: formData.fullName,
-            email: formData.email,
-            phoneNumber: formData.phoneNumber,
-            message: formData.message,
-          }
-        : {
-            fullName: formData.fullName,
-            email: formData.email,
-            preferredRole: formData.preferredRole,
-            aboutYourself: formData.aboutYourself,
-          };
-
-      const response = await fetch(url, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/volunteer/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          preferredRole: formData.preferredRole,
+          aboutYourself: formData.aboutYourself,
+        }),
       });
-
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to submit application');
-      }
-
+      if (!response.ok) throw new Error(data.message || 'Failed to submit application');
       setSubmitted(true);
-      setTimeout(() => {
-        setSelectedCall(null);
-        setSubmitted(false);
-        setFormData({
-          fullName: '',
-          email: '',
-          phoneNumber: '',
-          preferredRole: '',
-          aboutYourself: '',
-          message: '',
-        });
-      }, 3000);
+      setFormData({ fullName: '', email: '', phoneNumber: '', preferredRole: '', aboutYourself: '', message: '' });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to submit application';
-      alert(errorMessage);
+      setErrors((prev) => ({ ...prev, fullName: errorMessage }));
     } finally {
       setSubmitting(false);
     }
@@ -278,7 +224,6 @@ export default function UnifiedVolunteerPage() {
                   src="https://images.unsplash.com/photo-1567497063796-7952e455a2a6?w=600&h=750&fit=crop"
                   alt="Volunteers working with students"
                   className="w-full h-full object-cover"
-                  layout="fill"
                   width={600}
                   height={750}
                 />
@@ -355,7 +300,7 @@ export default function UnifiedVolunteerPage() {
                 return (
                   <div
                     key={call._id}
-                    onClick={() => !isExpired && setSelectedCall(call)}
+                    onClick={() => !isExpired && router.push(`/volunteer-calls/${call._id}`)}
                     className={`bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden transition-all ${
                       isExpired ? 'opacity-60' : 'hover:shadow-lg cursor-pointer'
                     }`}
@@ -364,10 +309,8 @@ export default function UnifiedVolunteerPage() {
                       <Image
                         src={call.designImage.url}
                         alt={call.title}
-                        className="w-full h-full object-cover"
-                        layout="fill"
-                        width={600}
-                        height={750}
+                        fill
+                        className="object-cover"
                       />
                       <div className="absolute top-3 right-3">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -524,7 +467,7 @@ export default function UnifiedVolunteerPage() {
             </p>
           </div>
 
-          {submitted && !selectedCall ? (
+          {submitted ? (
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-8 text-center">
               <CheckCircle className="mx-auto text-emerald-700 mb-4" size={48} />
               <h3 className="text-2xl font-bold text-emerald-900 mb-2">Application Submitted!</h3>
@@ -621,205 +564,6 @@ export default function UnifiedVolunteerPage() {
         </div>
       </section>
 
-      {/* Call Details Modal */}
-      {selectedCall && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg max-w-4xl w-full my-8 relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setSelectedCall(null)}
-              className="sticky top-4 right-4 float-right w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-stone-100 transition-colors z-10"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="p-8">
-              {submitted ? (
-                <div className="text-center py-12">
-                  <CheckCircle className="mx-auto text-emerald-700 mb-4" size={64} />
-                  <h3 className="text-3xl font-bold text-stone-900 mb-3">Application Submitted!</h3>
-                  <p className="text-stone-600 mb-6">
-                    Thank you for your interest. We&apos;ll review your application and contact you soon.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setSelectedCall(null);
-                      setSubmitted(false);
-                    }}
-                    className="px-6 py-2 bg-emerald-800 text-white rounded font-medium hover:bg-emerald-900 transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {/* Image */}
-                  <div className="relative h-64 rounded-lg overflow-hidden mb-8">
-                    <Image
-                      src={selectedCall.designImage.url}
-                      alt={selectedCall.title}
-                      className="w-full h-full object-cover"
-                      layout="fill"
-                      width={600}
-                      height={750}
-                    />
-                  </div>
-
-                  <div className="grid lg:grid-cols-3 gap-8">
-                    {/* Details */}
-                    <div className="lg:col-span-2 space-y-6">
-                      <div>
-                        <h2 className="text-3xl font-bold text-stone-900 mb-4">{selectedCall.title}</h2>
-                        
-                        <div className="grid sm:grid-cols-2 gap-4 mb-6">
-                          <div className="flex items-center gap-3">
-                            <Calendar className="text-emerald-700" size={20} />
-                            <div>
-                              <p className="text-xs text-stone-500">Event Date</p>
-                              <p className="font-medium text-stone-900">{selectedCall.location}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Users className="text-emerald-700" size={20} />
-                            <div>
-                              <p className="text-xs text-stone-500">Volunteers Needed</p>
-                              <p className="font-medium text-stone-900">{selectedCall.numberOfVolunteers}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Clock className="text-emerald-700" size={20} />
-                            <div>
-                              <p className="text-xs text-stone-500">Deadline</p>
-                              <p className="font-medium text-stone-900">{formatDate(selectedCall.deadline)}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <h3 className="text-xl font-semibold text-stone-900 mb-3">About This Opportunity</h3>
-                        <p className="text-stone-600 whitespace-pre-wrap leading-relaxed">
-                          {selectedCall.description}
-                        </p>
-                      </div>
-
-                      <div>
-                        <h3 className="text-xl font-semibold text-stone-900 mb-3">Requirements</h3>
-                        <p className="text-stone-600 whitespace-pre-wrap leading-relaxed">
-                          {selectedCall.requirements}
-                        </p>
-                      </div>
-
-                      <div>
-                        <span className="inline-block px-3 py-1 bg-stone-100 text-stone-700 rounded-full text-sm font-medium">
-                          {selectedCall.category.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Application Form */}
-                    <div className="lg:col-span-1">
-                      <div className="bg-stone-50 rounded-lg p-6 sticky top-6">
-                        <h3 className="text-xl font-semibold text-stone-900 mb-4">Apply Now</h3>
-                        
-                        {daysUntilDeadline(selectedCall.deadline) > 0 && (
-                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-                            <p className="text-sm text-yellow-800 text-center">
-                              <span className="font-semibold">{daysUntilDeadline(selectedCall.deadline)}</span> {daysUntilDeadline(selectedCall.deadline) === 1 ? 'day' : 'days'} left
-                            </p>
-                          </div>
-                        )}
-
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                          <div>
-                            <input
-                              type="text"
-                              name="fullName"
-                              placeholder="Full Name *"
-                              className={`w-full px-4 py-2.5 border rounded focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${
-                                errors.fullName ? 'border-red-500' : 'border-stone-300'
-                              }`}
-                              value={formData.fullName}
-                              onChange={handleChange}
-                              required
-                            />
-                            {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>}
-                          </div>
-
-                          <div>
-                            <input
-                              type="email"
-                              name="email"
-                              placeholder="Email *"
-                              className={`w-full px-4 py-2.5 border rounded focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${
-                                errors.email ? 'border-red-500' : 'border-stone-300'
-                              }`}
-                              value={formData.email}
-                              onChange={handleChange}
-                              required
-                            />
-                            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-                          </div>
-
-                          <div>
-                            <input
-                              type="tel"
-                              name="phoneNumber"
-                              placeholder="Phone Number *"
-                              className={`w-full px-4 py-2.5 border rounded focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${
-                                errors.phoneNumber ? 'border-red-500' : 'border-stone-300'
-                              }`}
-                              value={formData.phoneNumber}
-                              onChange={handleChange}
-                              required
-                            />
-                            {errors.phoneNumber && <p className="text-red-500 text-xs mt-1">{errors.phoneNumber}</p>}
-                          </div>
-
-                          <div>
-                            <textarea
-                              name="message"
-                              placeholder="Why do you want to volunteer? (Optional)"
-                              rows={3}
-                              className="w-full px-4 py-2.5 border border-stone-300 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm resize-none"
-                              value={formData.message}
-                              onChange={handleChange}
-                            />
-                          </div>
-
-                          <button
-                            type="submit"
-                            disabled={submitting}
-                            className="w-full px-4 py-3 bg-emerald-800 text-white rounded font-medium hover:bg-emerald-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {submitting ? (
-                              <span className="flex items-center justify-center gap-2">
-                                <Loader2 className="animate-spin" size={18} />
-                                Submitting...
-                              </span>
-                            ) : (
-                              'Submit Application'
-                            )}
-                          </button>
-                        </form>
-
-                        <div className="mt-6 pt-6 border-t border-stone-300">
-                          <h4 className="text-sm font-semibold text-stone-900 mb-3">Quick Info</h4>
-                          <div className="space-y-2 text-sm text-stone-600">
-                            <p>✓ Free to participate</p>
-                            <p>✓ Make a real impact</p>
-                            <p>✓ Meet like-minded people</p>
-                            <p>✓ Gain valuable experience</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* CTA Section */}
       <section className="py-24 px-5 md:px-8 bg-emerald-900 text-white relative overflow-hidden">

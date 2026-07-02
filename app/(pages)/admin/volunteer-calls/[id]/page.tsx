@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import Image from 'next/image';
+import toast from 'react-hot-toast';
+import { volunteerCallService } from '@/services/volunteerCallService';
 
 interface Application {
   _id: string;
@@ -67,23 +69,13 @@ export default function VolunteerCallDetailsPage() {
   const fetchVolunteerCall = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/volunteer-calls/${params.id}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-      
+      const data = await volunteerCallService.getVolunteerCallDetails(params.id as string);
       if (data.success) {
         setCall(data.data.call);
       }
     } catch (error) {
       console.error('Error fetching volunteer call:', error);
+      toast.error('Failed to load volunteer call');
     } finally {
       setLoading(false);
     }
@@ -91,29 +83,16 @@ export default function VolunteerCallDetailsPage() {
 
   const handleTogglePublish = async () => {
     if (!call) return;
-
     try {
       setActionLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/volunteer-calls/${call._id}/publish`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-      
+      const data = await volunteerCallService.togglePublishStatus(call._id);
       if (data.success) {
         setCall(data.data.call);
-        alert(`Volunteer call ${data.data.call.isPublished ? 'published' : 'unpublished'} successfully`);
+        toast.success(`Volunteer call ${data.data.call.isPublished ? 'published' : 'unpublished'} successfully`);
       }
     } catch (error) {
       console.error('Error toggling publish status:', error);
-      alert('Failed to update publish status');
+      toast.error('Failed to update publish status');
     } finally {
       setActionLoading(false);
     }
@@ -121,31 +100,16 @@ export default function VolunteerCallDetailsPage() {
 
   const handleUpdateStatus = async (newStatus: string) => {
     if (!call) return;
-
     try {
       setActionLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/volunteer-calls/${call._id}/status`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      );
-
-      const data = await response.json();
-      
+      const data = await volunteerCallService.updateStatus(call._id, newStatus);
       if (data.success) {
         setCall(data.data.call);
-        alert('Status updated successfully');
+        toast.success('Status updated successfully');
       }
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Failed to update status');
+      toast.error('Failed to update status');
     } finally {
       setActionLoading(false);
     }
@@ -153,62 +117,33 @@ export default function VolunteerCallDetailsPage() {
 
   const handleUpdateApplicationStatus = async (applicationId: string, status: string) => {
     if (!call) return;
-
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/volunteer-calls/${call._id}/applications/${applicationId}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ status }),
-        }
-      );
-
-      const data = await response.json();
-      
+      const data = await volunteerCallService.updateApplicationStatus(call._id, applicationId, status);
       if (data.success) {
         setCall(data.data.call);
-        alert('Application status updated successfully');
+        toast.success('Application status updated');
       }
     } catch (error) {
       console.error('Error updating application status:', error);
-      alert('Failed to update application status');
+      toast.error('Failed to update application status');
     }
   };
 
   const handleDelete = async () => {
     if (!call) return;
-
     if (!confirm('Are you sure you want to delete this volunteer call? This action cannot be undone.')) {
       return;
     }
-
     try {
       setActionLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/volunteer-calls/${call._id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-      
+      const data = await volunteerCallService.deleteVolunteerCall(call._id);
       if (data.success) {
-        alert('Volunteer call deleted successfully');
+        toast.success('Volunteer call deleted successfully');
         router.push('/admin/volunteer-calls');
       }
     } catch (error) {
       console.error('Error deleting volunteer call:', error);
-      alert('Failed to delete volunteer call');
+      toast.error('Failed to delete volunteer call');
     } finally {
       setActionLoading(false);
     }

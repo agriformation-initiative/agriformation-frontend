@@ -13,6 +13,9 @@ import {
   LogOut,
   Menu,
   X,
+  Images,
+  Megaphone,
+  BookOpen,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -66,8 +69,9 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
           { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
           { name: 'Applications', href: '/admin/applications', icon: FileText },
           { name: 'Volunteers', href: '/admin/volunteers', icon: Users },
-          { name: 'Gallery', href: '/admin/gallery', icon: User },
-          { name: 'Volunteer Calls', href: '/admin/volunteer-calls', icon: Users },
+          { name: 'Gallery', href: '/admin/gallery', icon: Images },
+          { name: 'Volunteer Calls', href: '/admin/volunteer-calls', icon: Megaphone },
+          { name: 'Blog', href: '/admin/blog', icon: BookOpen },
           ...(user.role === 'superadmin'
             ? [{ name: 'System Users', href: '/admin/users', icon: Settings }]
             : []),
@@ -80,38 +84,38 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
   }[role];
 
   return (
-    <div className="min-h-screen bg-stone-50 flex relative">
-      {/* Hamburger Button - Always visible */}
+    <div className="min-h-screen bg-stone-50 flex">
+      {/* Hamburger Button - Mobile only */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="fixed top-4 left-4 z-[60] p-2.5 bg-white rounded-md shadow-md hover:shadow-lg transition-shadow border border-stone-200"
+        className="fixed top-4 left-4 z-[60] p-2.5 bg-white rounded-md shadow-md hover:shadow-lg transition-shadow border border-stone-200 md:hidden"
         aria-label="Toggle menu"
       >
         <Menu size={22} className="text-stone-700" />
       </button>
 
-      {/* Backdrop Overlay */}
+      {/* Backdrop Overlay - Mobile only */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-40"
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-80 bg-white shadow-xl z-50 flex flex-col transition-transform duration-300 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed md:relative md:translate-x-0 top-0 left-0 h-full md:h-screen w-72 bg-white border-r border-stone-200 shadow-xl md:shadow-none z-50 md:z-auto flex flex-col flex-shrink-0 transition-transform duration-300 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        {/* Header with Close Button */}
+        {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-stone-200">
           <div className="flex items-center gap-2">
             <Image src="/images/agriformation.png" alt="Logo" width={80} height={80} />
           </div>
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="p-2 hover:bg-stone-100 rounded-md transition-colors"
+            className="p-2 hover:bg-stone-100 rounded-md transition-colors md:hidden"
             aria-label="Close menu"
           >
             <X size={22} className="text-stone-600" />
@@ -172,11 +176,11 @@ export default function DashboardLayout({ children, role }: DashboardLayoutProps
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 w-full">
+      <div className="flex-1 min-w-0">
         <main className={`min-h-screen p-6 md:p-10 transition-all duration-300 ${
-          isSidebarOpen ? 'blur-sm' : ''
+          isSidebarOpen ? 'blur-sm md:blur-none' : ''
         }`}>
-          <div className="pt-14">
+          <div className="pt-14 md:pt-0">
             {children}
           </div>
         </main>

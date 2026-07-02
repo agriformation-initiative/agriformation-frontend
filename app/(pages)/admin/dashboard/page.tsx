@@ -7,6 +7,7 @@ import { DashboardStats, VolunteerApplication } from '@/types/indexes';
 import { format } from 'date-fns';
 import { FaUsers, FaUserCheck, FaClock, FaFileAlt, FaEllipsisV } from 'react-icons/fa';
 import Link from 'next/link';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -58,18 +59,21 @@ export default function AdminDashboard() {
             title="Total Volunteers"
             value={stats?.totalVolunteers || 0}
             gradient="from-blue-500 to-blue-600"
+            href="/admin/volunteers"
           />
           <StatCard
             icon={<FaUserCheck />}
             title="Active This Month"
             value={stats?.activeVolunteers || 0}
             gradient="from-emerald-500 to-emerald-600"
+            href="/admin/volunteers"
           />
           <StatCard
             icon={<FaFileAlt />}
             title="Needs Review"
             value={stats?.pendingApplications || 0}
             gradient="from-amber-500 to-amber-600"
+            href="/admin/applications"
           />
           <StatCard
             icon={<FaClock />}
@@ -122,6 +126,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex items-center gap-3">
                       <StatusBadge status={app.status} />
+
                       <button className="text-gray-400 hover:text-gray-600 transition-colors">
                         <FaEllipsisV className="text-sm" />
                       </button>
@@ -135,19 +140,24 @@ export default function AdminDashboard() {
 
         {/* Quick Actions */}
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/admin/applications" className="px-4 py-2 bg-green-700 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm inline-block">
+          <Link href="/admin/applications" className="px-4 py-2 bg-green-700 text-white rounded-lg font-medium hover:bg-green-800 transition-colors shadow-sm inline-block">
             Review Applications
           </Link>
-          
+          <Link href="/admin/volunteer-calls/create" className="px-4 py-2 bg-white border border-stone-300 text-stone-700 rounded-lg font-medium hover:bg-stone-50 transition-colors shadow-sm inline-block">
+            New Volunteer Call
+          </Link>
+          <Link href="/admin/volunteers" className="px-4 py-2 bg-white border border-stone-300 text-stone-700 rounded-lg font-medium hover:bg-stone-50 transition-colors shadow-sm inline-block">
+            View Volunteers
+          </Link>
         </div>
       </div>
     </DashboardLayout>
   );
 }
 
-function StatCard({ icon, title, value, gradient }: { icon: React.ReactNode; title: string; value: number | string; gradient: string }) {
-  return (
-    <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+function StatCard({ icon, title, value, gradient, href }: { icon: React.ReactNode; title: string; value: number | string; gradient: string; href?: string }) {
+  const inner = (
+    <div className={`bg-white rounded-xl p-5 shadow-sm border border-gray-200 transition-shadow ${href ? 'hover:shadow-md cursor-pointer' : ''}`}>
       <div className="flex items-start justify-between mb-4">
         <div className={`w-11 h-11 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center text-white shadow-sm`}>
           {icon}
@@ -159,21 +169,10 @@ function StatCard({ icon, title, value, gradient }: { icon: React.ReactNode; tit
       </div>
     </div>
   );
+
+  if (href) {
+    return <Link href={href}>{inner}</Link>;
+  }
+  return inner;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const styles = {
-    pending: 'bg-amber-50 text-amber-700 border-amber-200',
-    reviewed: 'bg-blue-50 text-blue-700 border-blue-200',
-    accepted: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    rejected: 'bg-red-50 text-red-700 border-red-200',
-    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    'on-hold': 'bg-gray-50 text-gray-700 border-gray-200',
-  };
-  
-  return (
-    <span className={`px-2.5 py-1 rounded-md text-xs font-medium border ${styles[status as keyof typeof styles]}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  );
-}

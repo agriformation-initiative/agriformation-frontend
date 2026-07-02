@@ -19,6 +19,7 @@ export default function GalleryPage() {
     { value: 'workshop', label: 'Workshops' },
     { value: 'community_event', label: 'Community Events' },
     { value: 'training', label: 'Training Sessions' },
+    { value: 'blog_post', label: 'Blog' },
     { value: 'other', label: 'Other' },
   ];
 
@@ -32,12 +33,12 @@ export default function GalleryPage() {
       
       // Fetch featured galleries
       const featuredRes = await galleryService.getFeaturedGalleries();
-      setFeaturedGalleries(featuredRes.data.galleries);
+      setFeaturedGalleries(featuredRes.data.galleries ?? []);
 
       // Fetch all galleries with optional category filter
       const params = selectedCategory !== 'all' ? { category: selectedCategory } : {};
       const allRes = await galleryService.getPublishedGalleries(params);
-      setAllGalleries(allRes.data.items);
+      setAllGalleries((allRes.data as unknown as { galleries: Gallery[] }).galleries ?? []);
     } catch (error) {
       console.error('Error fetching galleries:', error);
     } finally {

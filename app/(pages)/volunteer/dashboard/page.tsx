@@ -6,6 +6,7 @@ import { volunteerService } from '@/services/volunteerService';
 import { Volunteer } from '@/types/indexes';
 import { format } from 'date-fns';
 import { Clock, ScrollText, Trophy, ArrowRight } from 'lucide-react';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 export default function VolunteerDashboard() {
   const [volunteer, setVolunteer] = useState<Volunteer | null>(null);
@@ -45,25 +46,6 @@ export default function VolunteerDashboard() {
       </DashboardLayout>
     );
   }
-
-  const StatusBadge = ({ status }: { status: string }) => {
-    const styles: Record<string, string> = {
-      pending: 'bg-amber-100 text-amber-800 border border-amber-200',
-      approved: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
-      active: 'bg-green-100 text-green-800 border border-green-200',
-      completed: 'bg-teal-100 text-teal-800 border border-teal-200',
-      rejected: 'bg-red-100 text-red-800 border border-red-200',
-      'on-hold': 'bg-stone-100 text-stone-700 border border-stone-300',
-    };
-
-    return (
-      <span
-        className={`px-4 py-1.5 rounded text-sm font-medium ${styles[status] || styles['on-hold']}`}
-      >
-        {status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
-      </span>
-    );
-  };
 
   return (
     <DashboardLayout role="volunteer">

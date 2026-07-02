@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Loader2, Upload, X } from 'lucide-react';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import Image from 'next/image';
+import toast from 'react-hot-toast';
 
 interface VolunteerCall {
   _id: string;
@@ -105,7 +106,7 @@ export default function EditVolunteerCallPage() {
       }
     } catch (error: any) {
       console.error('Error fetching volunteer call:', error);
-      alert(error.message || 'Failed to load volunteer call');
+      toast.error(error.message || 'Failed to load volunteer call');
       router.push('/admin/volunteer-calls');
     } finally {
       setLoading(false);
@@ -225,7 +226,7 @@ export default function EditVolunteerCallPage() {
       router.push(`/admin/volunteer-calls/${callId}`);
     } catch (error: any) {
       console.error('Error updating volunteer call:', error);
-      alert(error.message || 'Failed to update volunteer call');
+      toast.error(error.message || 'Failed to update volunteer call');
     } finally {
       setSubmitting(false);
     }

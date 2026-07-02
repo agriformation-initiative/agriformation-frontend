@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { FaCheck, FaTimes, FaEye } from 'react-icons/fa';
 import { X } from 'lucide-react';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState<VolunteerApplication[]>([]);
@@ -171,24 +172,6 @@ export default function ApplicationsPage() {
         />
       )}
     </DashboardLayout>
-  );
-}
-
-// Reusable Status Badge – matches homepage style
-function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, string> = {
-    pending: 'bg-amber-50 text-amber-800 border border-amber-200',
-    reviewed: 'bg-blue-50 text-blue-800 border border-blue-200',
-    accepted: 'bg-emerald-50 text-emerald-800 border border-emerald-200',
-    rejected: 'bg-red-50 text-red-800 border border-red-200',
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center px-3 py-1.5 rounded text-xs font-semibold ${variants[status] || 'bg-gray-100 text-gray-800'}`}
-    >
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
   );
 }
 
