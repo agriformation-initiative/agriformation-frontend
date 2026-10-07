@@ -1,5 +1,6 @@
 'use client';
 import { useRef, useState } from 'react';
+import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { TextField, TextAreaField, SelectField } from '@/components/ui/Field';
@@ -37,6 +38,8 @@ export default function GeneralApplicationForm() {
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const [consentError, setConsentError] = useState('');
 
   const set = (key: keyof Values) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setValues((p) => ({ ...p, [key]: e.target.value }));
@@ -52,6 +55,11 @@ export default function GeneralApplicationForm() {
     const found = validate(values);
     setErrors(found);
     const first = (Object.keys(found) as (keyof Values)[])[0];
+    if (!consent) setConsentError('Please agree so we can use your details to review your application.');
+    if (!consent && !first) {
+      formRef.current?.querySelector<HTMLElement>('[name="consent"]')?.focus();
+      return;
+    }
     if (first) {
       formRef.current?.querySelector<HTMLElement>(`[name="${first}"]`)?.focus();
       return;
@@ -67,6 +75,7 @@ export default function GeneralApplicationForm() {
       });
       setDone(true);
       setValues(EMPTY);
+      setConsent(false);
     } catch (err) {
       const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
       setFormError(message || 'We could not send your application. Check your connection and try again.');
@@ -101,6 +110,24 @@ export default function GeneralApplicationForm() {
       <TextAreaField id="aboutYourself" name="aboutYourself" label="About you" rows={6} value={values.aboutYourself}
         onChange={set('aboutYourself')} onBlur={onBlur('aboutYourself')} error={errors.aboutYourself}
         hint={`Your background and why you want to help. ${values.aboutYourself.trim().length} of ${MIN_ABOUT} characters minimum.`} />
+
+      <div>
+        <label className="flex cursor-pointer items-start gap-3 text-sm text-stone-700">
+          <input
+            type="checkbox"
+            name="consent"
+            checked={consent}
+            onChange={(e) => { setConsent(e.target.checked); if (e.target.checked) setConsentError(''); }}
+            aria-invalid={!!consentError}
+            className="mt-0.5 h-5 w-5 shrink-0 accent-brand-700"
+          />
+          <span>
+            I agree that AgroNext may use these details to review my application and contact me, as described in the{' '}
+            <Link href="/privacy" className="font-medium text-brand-700 underline underline-offset-4">privacy policy</Link>.
+          </span>
+        </label>
+        {consentError && <p role="alert" className="mt-1.5 text-sm text-red-700">{consentError}</p>}
+      </div>
       {formError && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">{formError}</p>}
       <Button type="submit" fullWidth loading={submitting}>Send application</Button>
     </form>

@@ -59,6 +59,9 @@ function SignInForm() {
         value={password} onChange={(e) => setPassword(e.target.value)} />
       {error && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       <Button type="submit" fullWidth loading={loading}>Sign in</Button>
+      <Link href="/forgot-password" className="inline-flex min-h-11 items-center text-sm font-medium text-brand-700 hover:underline">
+        Forgot your password?
+      </Link>
     </form>
   );
 }

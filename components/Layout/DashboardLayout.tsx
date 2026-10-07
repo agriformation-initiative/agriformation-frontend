@@ -5,10 +5,11 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   Home, User, Users, FileText, Settings, LogOut, Menu, X, Images, Megaphone, BookOpen,
+  PanelLeftClose, PanelLeftOpen, Inbox, KeyRound, SquarePen,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import Logo from '@/components/ui/Logo';
 import Skeleton from '@/components/ui/Skeleton';
+import Image from 'next/image';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -28,7 +29,12 @@ const ADMIN_NAV = [
   { name: 'Volunteer calls', href: '/admin/volunteer-calls', icon: Megaphone },
   { name: 'Gallery', href: '/admin/gallery', icon: Images },
   { name: 'Blog', href: '/admin/blog', icon: BookOpen },
+  { name: 'Inquiries', href: '/admin/inquiries', icon: Inbox },
+  { name: 'Site content', href: '/admin/content', icon: SquarePen },
+  { name: 'Account', href: '/admin/account', icon: KeyRound },
 ];
+
+const COLLAPSE_KEY = 'sidebar-collapsed';
 
 const ROLE_LABEL = { volunteer: 'Volunteer', admin: 'Administrator', superadmin: 'Super admin' } as const;
 
@@ -37,6 +43,28 @@ export default function DashboardLayout({ children, area }: DashboardLayoutProps
   const pathname = usePathname();
   const { user, isAuthenticated, hydrated, clearAuth, initAuth } = useAuthStore();
   const [open, setOpen] = useState(false);
+  // Desktop only, admin area only. Remembered per browser; the mobile drawer is always full width.
+  const [collapsedPref, setCollapsedPref] = useState(false);
+  const collapsible = area === 'admin';
+  const collapsed = collapsible && collapsedPref;
+
+  useEffect(() => {
+    try {
+      setCollapsedPref(localStorage.getItem(COLLAPSE_KEY) === '1');
+    } catch {
+      /* storage unavailable: stay expanded */
+    }
+  }, []);
+
+  const toggleCollapsed = () =>
+    setCollapsedPref((v) => {
+      try {
+        localStorage.setItem(COLLAPSE_KEY, v ? '0' : '1');
+      } catch {
+        /* ignore */
+      }
+      return !v;
+    });
 
   useEffect(() => initAuth(), [initAuth]);
 
@@ -97,13 +125,27 @@ export default function DashboardLayout({ children, area }: DashboardLayoutProps
       {open && <div className="fixed inset-0 z-40 bg-stone-900/50 md:hidden" onClick={() => setOpen(false)} aria-hidden="true" />}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-stone-200 bg-white transition-transform duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0 ${
-          open ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-stone-200 bg-white overflow-hidden transition-[transform,width] duration-300 ease-out md:sticky md:top-0 md:h-screen md:translate-x-0 ${
+          collapsed ? 'md:w-20' : ''
+        } ${open ? 'translate-x-0' : '-translate-x-full'}`}
         aria-label="Dashboard"
       >
-        <div className="flex items-center justify-between border-b border-stone-200 p-4">
-          <Logo showTagline={false} />
+        <div className="flex items-center justify-between border-b border-stone-200 px-4.5 py-4">
+          <div className={`overflow-hidden transition-[max-width,opacity] duration-300 ease-out ${collapsed ? 'md:max-w-0 md:opacity-0' : 'max-w-24 opacity-100'}`}>
+            <Image src="/images/agronext.png" alt="AgroNext" width={100} height={100} className="h-auto w-24 object-contain" />
+          </div>
+          {collapsible && (
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-md text-stone-600 hover:bg-stone-100 md:flex"
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-expanded={!collapsed}
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setOpen(false)}
@@ -114,11 +156,11 @@ export default function DashboardLayout({ children, area }: DashboardLayoutProps
           </button>
         </div>
 
-        <p className="px-5 pb-1 pt-4 text-xs font-semibold uppercase tracking-widest text-stone-500">
+        <p className={`whitespace-nowrap px-5 pb-1 pt-4 text-xs font-semibold uppercase tracking-widest text-stone-500 transition-opacity duration-300 ${collapsed ? 'md:opacity-0' : ''}`}>
           {ROLE_LABEL[user.role]}
         </p>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-2" aria-label="Dashboard sections">
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2" aria-label="Dashboard sections">
           <ul className="space-y-1">
             {navItems.map(({ name, href, icon: Icon }) => {
               const active = pathname === href || (href !== '/admin/dashboard' && href !== '/volunteer/dashboard' && pathname.startsWith(`${href}/`));
@@ -127,12 +169,11 @@ export default function DashboardLayout({ children, area }: DashboardLayoutProps
                   <Link
                     href={href}
                     aria-current={active ? 'page' : undefined}
-                    className={`flex min-h-11 items-center gap-3 rounded-md px-3 font-medium transition-colors ${
-                      active ? 'bg-brand-700 text-white' : 'text-stone-700 hover:bg-stone-100'
-                    }`}
+                    title={collapsed ? name : undefined}
+                    className={`flex min-h-11 items-center gap-3 rounded-md px-4.5 font-medium transition-colors ${active ? 'bg-brand-700 text-white' : 'text-stone-700 hover:bg-stone-100'}`}
                   >
-                    <Icon size={20} aria-hidden="true" />
-                    {name}
+                    <Icon size={20} aria-hidden="true" className="shrink-0" />
+                    <span className={`whitespace-nowrap transition-opacity duration-300 ${collapsed ? 'md:opacity-0' : ''}`}>{name}</span>
                   </Link>
                 </li>
               );
@@ -140,12 +181,12 @@ export default function DashboardLayout({ children, area }: DashboardLayoutProps
           </ul>
         </nav>
 
-        <div className="border-t border-stone-200 p-4">
-          <div className="mb-3 flex items-center gap-3">
+        <div className="border-t border-stone-200 px-5 py-4">
+          <div className="mb-3 flex items-center gap-3" title={collapsed ? `${user.fullName} (${user.email})` : undefined}>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-800" aria-hidden="true">
               {initials}
             </div>
-            <div className="min-w-0">
+            <div className={`min-w-0 transition-opacity duration-300 ${collapsed ? 'md:opacity-0' : ''}`}>
               <p className="truncate text-sm font-semibold text-stone-900">{user.fullName}</p>
               <p className="truncate text-sm text-stone-600">{user.email}</p>
             </div>
@@ -153,9 +194,10 @@ export default function DashboardLayout({ children, area }: DashboardLayoutProps
           <button
             type="button"
             onClick={logout}
-            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-stone-100 font-medium text-stone-800 transition-colors hover:bg-stone-200"
+            title={collapsed ? 'Log out' : undefined}
+            className={`flex min-h-11 w-full items-center justify-center rounded-md bg-stone-100 font-medium text-stone-800 transition-colors hover:bg-stone-200 gap-2 ${collapsed ? 'md:gap-0' : ''}`}
           >
-            <LogOut size={18} aria-hidden="true" /> Log out
+            <LogOut size={18} aria-hidden="true" /> <span className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ease-out ${collapsed ? 'md:max-w-0 md:opacity-0' : 'max-w-24'}`}>Log out</span>
           </button>
         </div>
       </aside>

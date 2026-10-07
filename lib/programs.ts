@@ -9,8 +9,8 @@ export interface Program {
   image: string;
 }
 
-/** Single source of truth for the home page preview and the programs page. */
-export const PROGRAMS: Program[] = [
+/** Built-in defaults. The live content comes from the admin (see lib/settings.ts) and falls back to these. */
+export const DEFAULT_PROGRAMS: Program[] = [
   {
     title: 'School Gardens & Agri-Clubs',
     short:
@@ -80,3 +80,6 @@ export const PROGRAMS: Program[] = [
     image: '/images/happy-students.jpg',
   },
 ];
+
+/** Photos for programs, by position. Programs added in the admin beyond these use the last one. */
+export const PROGRAM_IMAGES = DEFAULT_PROGRAMS.map((p) => p.image);

@@ -75,6 +75,7 @@ export interface DashboardStats {
   totalVolunteers: number;
   activeVolunteers: number;
   pendingApplications: number;
+  newInquiries?: number;
   totalHoursContributed: number;
 }
 

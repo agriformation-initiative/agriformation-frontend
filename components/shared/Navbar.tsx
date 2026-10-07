@@ -28,14 +28,15 @@ export const Navigation = () => {
   if (isAppShellPath(pathname)) return null;
 
   const linkClass = (href: string) =>
-    `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-      isActivePath(pathname, href) ? 'text-brand-800' : 'text-stone-600 hover:text-stone-900'
+    `rounded-md px-3 py-2 text-sm font-medium transition-colors ${isActivePath(pathname, href) ? 'text-brand-800' : 'text-stone-600 hover:text-stone-900'
     }`;
 
   return (
     <header className="sticky top-0 z-50 border-b border-stone-200 bg-white">
-      <nav aria-label="Main" className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3 md:px-8">
-        <Image src="/images/agronext.png" alt="Logo" width={100} height={40} />
+      <nav aria-label="Main" className="mx-auto flex max-w-6xl items-center justify-between  py-3 px-4">
+        <Link href="/" className="mb-5 inline-block">
+          <Image src="/images/agronext.png" alt="Logo" width={100} height={100} className="object-fit w-42 h-auto" />
+        </Link>
 
         <div className="hidden items-center gap-1 lg:flex">
           {NAV_LINKS.map((item) => (
@@ -75,9 +76,8 @@ export const Navigation = () => {
                   <Link
                     href={item.href}
                     aria-current={isActivePath(pathname, item.href) ? 'page' : undefined}
-                    className={`flex min-h-12 items-center border-b border-stone-100 text-lg ${
-                      isActivePath(pathname, item.href) ? 'font-semibold text-brand-800' : 'text-stone-800'
-                    }`}
+                    className={`flex min-h-12 items-center border-b border-stone-100 text-lg ${isActivePath(pathname, item.href) ? 'font-semibold text-brand-800' : 'text-stone-800'
+                      }`}
                   >
                     {item.label}
                   </Link>

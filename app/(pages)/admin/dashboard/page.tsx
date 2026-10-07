@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Users, UserCheck, Clock, FileText } from 'lucide-react';
+import { Users, UserCheck, Clock, FileText, Inbox } from 'lucide-react';
 import { adminService } from '@/services/adminService';
 import { DashboardStats, VolunteerApplication } from '@/types/indexes';
 import { formatDate } from '@/lib/format';
@@ -43,10 +43,11 @@ export default function AdminDashboard() {
         action={<Button href="/admin/applications">Review applications</Button>}
       />
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
         <StatTile icon={Users} label="Total volunteers" value={stats?.totalVolunteers ?? 0} href="/admin/volunteers" />
         <StatTile icon={UserCheck} label="Approved volunteers" value={stats?.activeVolunteers ?? 0} href="/admin/volunteers" />
         <StatTile icon={FileText} label="Awaiting review" value={stats?.pendingApplications ?? 0} href="/admin/applications" />
+        <StatTile icon={Inbox} label="New inquiries" value={stats?.newInquiries ?? 0} href="/admin/inquiries" />
         <StatTile icon={Clock} label="Hours contributed" value={`${stats?.totalHoursContributed ?? 0}h`} />
       </div>
 
