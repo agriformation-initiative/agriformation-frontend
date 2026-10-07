@@ -1,221 +1,85 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 'use client';
-import React, { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import toast from 'react-hot-toast';
+import { ArrowLeft } from 'lucide-react';
 import { galleryService } from '@/services/galleryService';
-import DashboardLayout from '@/components/Layout/DashboardLayout';
+import { CreateGalleryData } from '@/types/indexes';
+import Button from '@/components/ui/Button';
+import { TextField, TextAreaField, SelectField } from '@/components/ui/Field';
+
+const CATEGORIES = [
+  { value: 'farm_excursion', label: 'Farm excursion' },
+  { value: 'workshop', label: 'Workshop' },
+  { value: 'community_event', label: 'Community event' },
+  { value: 'training', label: 'Training session' },
+  { value: 'other', label: 'Other' },
+];
+
+type Errors = Partial<Record<'title' | 'description' | 'eventDate', string>>;
 
 export default function CreateGalleryPage() {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    eventDate: '',
-    location: '',
-    category: 'farm_excursion' as const,
+  const [errors, setErrors] = useState<Errors>({});
+  const [form, setForm] = useState<Required<CreateGalleryData>>({
+    title: '', description: '', eventDate: '', location: '', category: 'farm_excursion',
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const categories = [
-    { value: 'farm_excursion', label: 'Farm Excursion' },
-    { value: 'workshop', label: 'Workshop' },
-    { value: 'community_event', label: 'Community Event' },
-    { value: 'training', label: 'Training Session' },
-    { value: 'other', label: 'Other' },
-  ];
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
+  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setForm((p) => ({ ...p, [key]: e.target.value }));
+    if (key in errors) setErrors((p) => ({ ...p, [key]: undefined }));
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.title.trim()) {
-      newErrors.title = 'Title is required';
-    }
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    }
-    if (!formData.eventDate) {
-      newErrors.eventDate = 'Event date is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) return;
-
+    const found: Errors = {};
+    if (!form.title.trim()) found.title = 'Enter a title for the album.';
+    if (!form.description.trim()) found.description = 'Write a short description.';
+    if (!form.eventDate) found.eventDate = 'Choose the date of the event.';
+    setErrors(found);
+    const first = Object.keys(found)[0];
+    if (first) {
+      formRef.current?.querySelector<HTMLElement>(`[name="${first}"]`)?.focus();
+      return;
+    }
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await galleryService.createGallery(formData);
-      const galleryId = response.data.gallery._id;
-      router.push(`/admin/gallery/${galleryId}`);
-    } catch (error: any) {
-      console.error('Error creating gallery:', error);
-      alert(error.response?.data?.message || 'Failed to create gallery');
-    } finally {
+      const res = await galleryService.createGallery(form);
+      toast.success('Album created. Add photos next.');
+      router.push(`/admin/gallery/${res.data.gallery._id}`);
+    } catch (err) {
+      toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message || 'We could not create the album. Try again.');
       setLoading(false);
     }
   };
 
   return (
-    <DashboardLayout role="admin">
-      <div className="max-w-3xl">
-        <button
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-2 text-stone-600 hover:text-green-700 mb-6 transition-colors"
-        >
-          <ArrowLeft size={20} />
-          <span className="font-medium">Back</span>
-        </button>
+    <div className="mx-auto max-w-2xl">
+      <Link href="/admin/gallery" className="inline-flex min-h-11 items-center gap-2 font-medium text-stone-700 hover:text-brand-800">
+        <ArrowLeft size={18} aria-hidden="true" /> All albums
+      </Link>
+      <h1 className="mt-2 text-3xl font-semibold">Create album</h1>
+      <p className="mt-1 text-stone-600">Add the details first. You can upload photos once the album exists.</p>
 
-        <div className="bg-white rounded-lg shadow-sm border border-stone-200 p-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-stone-900 mb-2">Create New Gallery</h1>
-            <p className="text-stone-600">
-              Fill in the details to create a new photo gallery. You can add photos after creating the gallery.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Title */}
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-stone-700 mb-2">
-                Gallery Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                placeholder="e.g., Farm Excursion - March 2024"
-                className={`w-full px-4 py-2.5 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                  errors.title ? 'border-red-500' : 'border-stone-300'
-                }`}
-              />
-              {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
-            </div>
-
-            {/* Description */}
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-stone-700 mb-2">
-                Description <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows={4}
-                placeholder="Describe the event and what visitors will see in this gallery..."
-                className={`w-full px-4 py-2.5 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none ${
-                  errors.description ? 'border-red-500' : 'border-stone-300'
-                }`}
-              />
-              {errors.description && (
-                <p className="text-red-500 text-sm mt-1">{errors.description}</p>
-              )}
-            </div>
-
-            {/* Event Date and Category */}
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="eventDate" className="block text-sm font-medium text-stone-700 mb-2">
-                  Event Date <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  id="eventDate"
-                  name="eventDate"
-                  value={formData.eventDate}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-2.5 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                    errors.eventDate ? 'border-red-500' : 'border-stone-300'
-                  }`}
-                />
-                {errors.eventDate && (
-                  <p className="text-red-500 text-sm mt-1">{errors.eventDate}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="category" className="block text-sm font-medium text-stone-700 mb-2">
-                  Category
-                </label>
-                <select
-                  id="category"
-                  name="category"
-                  value={formData.category}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Location */}
-            <div>
-              <label htmlFor="location" className="block text-sm font-medium text-stone-700 mb-2">
-                Location (Optional)
-              </label>
-              <input
-                type="text"
-                id="location"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                placeholder="e.g., Ibiteinye Integrated Farms, Elelewon"
-                className="w-full px-4 py-2.5 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-
-            {/* Submit Button */}
-            <div className="flex gap-4 pt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-700 text-white rounded-md font-medium hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="animate-spin" size={20} />
-                    Creating...
-                  </>
-                ) : (
-                  'Create Gallery'
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="px-6 py-3 border border-stone-300 text-stone-700 rounded-md font-medium hover:bg-stone-50 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+      <form ref={formRef} onSubmit={submit} noValidate className="mt-8 space-y-5 rounded-xl bg-white p-6 md:p-8">
+        <TextField id="title" name="title" label="Album title" placeholder="Farm excursion, March 2024" value={form.title} onChange={set('title')} error={errors.title} />
+        <TextAreaField id="description" name="description" label="Description" rows={4} value={form.description} onChange={set('description')} error={errors.description}
+          hint="What happened, and what will visitors see?" />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <TextField id="eventDate" name="eventDate" type="date" label="Event date" value={form.eventDate} onChange={set('eventDate')} error={errors.eventDate} />
+          <SelectField id="category" name="category" label="Category" value={form.category} onChange={set('category')}>
+            {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </SelectField>
         </div>
-      </div>
-    </DashboardLayout>
+        <TextField id="location" name="location" label="Location" optional placeholder="Ibiteinye Integrated Farms, Elelewon" value={form.location} onChange={set('location')} />
+        <div className="flex flex-wrap gap-3 pt-2">
+          <Button type="submit" loading={loading}>Create album</Button>
+          <Button href="/admin/gallery" variant="secondary">Cancel</Button>
+        </div>
+      </form>
+    </div>
   );
 }

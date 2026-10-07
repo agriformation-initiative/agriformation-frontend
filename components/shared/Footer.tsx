@@ -1,98 +1,90 @@
 'use client';
-import React from 'react';
-import { Facebook, Instagram, Linkedin } from 'lucide-react';
-import Image from 'next/image';
-import { usePathname } from "next/navigation";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import SocialIcon from '@/components/shared/SocialIcon';
+import { NAV_LINKS, SITE, isAppShellPath } from '@/lib/site';
+import Image from 'next/image'
 
+const PROGRAMS = [
+  'School Gardens & Agri-Clubs',
+  'Teacher Training',
+  'Farm Excursions',
+  'Summer Internships',
+];
 
 export const Footer = () => {
-  const navigateTo = (path: string) => {
-    console.log(`Navigating to ${path}`);
-    window.scrollTo(0, 0);
-  };
-
   const pathname = usePathname();
-  if (pathname === '/admin/' || pathname.startsWith('/admin/') || pathname === '/account' || pathname.startsWith('/dashboard/') ) {
-    return null;
-  }
-
+  if (isAppShellPath(pathname)) return null;
 
   return (
-    <footer className="bg-stone-900 text-stone-300 py-16 border-t border-stone-800">
-      <div className="max-w-6xl mx-auto px-5 md:px-8">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-12 gap-12 lg:gap-8 mb-16">
-          <div className="lg:col-span-4">
-            <button onClick={() => navigateTo('/')} className="flex items-center gap-2.5 mb-5">
-              <Image
-                src='/images/agriformation.png'
-                alt='logo'
-                width={70}
-                height={50}
-                className='w-44 h-full object-cover'
-              />
-            </button>
-            <p className="text-stone-400 text-sm leading-relaxed max-w-xs">
-              Transforming agricultural education in Nigeria through practical learning and community engagement.
+    <footer className="bg-brand-950 px-5 py-16 text-brand-100 md:px-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
+          <div className="lg:col-span-5">
+            <Image src="/images/agronext.png" alt="Logo" width={100} height={40} />
+            <p className="mt-5 max-w-sm text-sm leading-relaxed text-brand-200">
+              {SITE.tagline}, through practical learning, mentorship and community engagement.
             </p>
           </div>
 
+          <nav aria-label="Footer" className="lg:col-span-2">
+            <h2 className="mb-4 font-sans text-sm font-semibold text-white">Explore</h2>
+            <ul className="space-y-1">
+              {NAV_LINKS.filter((l) => l.href !== '/').map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="inline-flex min-h-8 items-center text-sm text-brand-200 hover:text-white">
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <Link href="/volunteer" className="inline-flex min-h-8 items-center text-sm text-brand-200 hover:text-white">
+                  Volunteer
+                </Link>
+              </li>
+              <li>
+                <Link href="/donate" className="inline-flex min-h-8 items-center text-sm text-brand-200 hover:text-white">
+                  Donate
+                </Link>
+              </li>
+            </ul>
+          </nav>
+
           <div className="lg:col-span-2">
-            <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Navigate</h4>
-            <div className="space-y-2.5">
-              <button onClick={() => navigateTo('/about')} className="block text-stone-400 hover:text-white transition text-sm">About Us</button>
-              <button onClick={() => navigateTo('/programs')} className="block text-stone-400 hover:text-white transition text-sm">Our Programs</button>
-              <button onClick={() => navigateTo('/gallery')} className="block text-stone-400 hover:text-white transition text-sm">Gallery</button>
-              <button onClick={() => navigateTo('/volunteer')} className="block text-stone-400 hover:text-white transition text-sm">Volunteer</button>
-            </div>
+            <h2 className="mb-4 font-sans text-sm font-semibold text-white">Programs</h2>
+            <ul className="space-y-2.5 text-sm text-brand-200">
+              {PROGRAMS.map((p) => (
+                <li key={p}>
+                  <Link href="/programs" className="hover:text-white">{p}</Link>
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="lg:col-span-3">
-            <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Programs</h4>
-            <div className="space-y-2.5 text-sm text-stone-400">
-              <p>School Gardens & Agri-Clubs</p>
-              <p>Teacher Training</p>
-              <p>Farm Excursions</p>
-              <p>Summer Internships</p>
+            <h2 className="mb-4 font-sans text-sm font-semibold text-white">Connect</h2>
+            <div className="mb-5 flex gap-3">
+              {SITE.socials.map((s) => (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.label}
+                  className="flex h-11 w-11 items-center justify-center rounded-md bg-brand-900 text-brand-100 transition-colors hover:bg-white hover:text-brand-900"
+                >
+                  <SocialIcon label={s.label} />
+                </a>
+              ))}
             </div>
-          </div>
-
-          <div className="lg:col-span-3">
-            <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Connect</h4>
-            <div className="flex gap-2.5 mb-5">
-              <a 
-                href="https://www.facebook.com/profile.php?id=61560490960753" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="w-10 h-10 bg-stone-800 rounded flex items-center justify-center hover:bg-emerald-800 transition-colors"
-              >
-                <Facebook size={16} strokeWidth={2} />
-              </a>
-              <a 
-                href="https://www.instagram.com/agriformation_initiative" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="w-10 h-10 bg-stone-800 rounded flex items-center justify-center hover:bg-emerald-800 transition-colors"
-              >
-                <Instagram size={16} strokeWidth={2} />
-              </a>
-              <a 
-                href="https://www.linkedin.com/company/agriformation-initiative/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="w-10 h-10 bg-stone-800 rounded flex items-center justify-center hover:bg-emerald-800 transition-colors"
-              >
-                <Linkedin size={16} strokeWidth={2} />
-              </a>
-            </div>
-            <a href="mailto:theagriformation.project@gmail.com" className="text-sm text-stone-400 hover:text-white transition block">
-              theagriformation.project@gmail.com
+            <a href={`mailto:${SITE.email}`} className="break-all text-sm text-brand-200 hover:text-white">
+              {SITE.email}
             </a>
           </div>
         </div>
 
-        <div className="border-t border-stone-800 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-stone-500">
-          <p>&copy; 2025 Agriformation Initiative. All rights reserved.</p>
-          <p className="text-xs">Transforming Agricultural Education in Nigeria</p>
+        <div className="mt-14 border-t border-brand-900 pt-8 text-sm text-brand-300">
+          <p>&copy; {new Date().getFullYear()} {SITE.fullName}. All rights reserved.</p>
         </div>
       </div>
     </footer>

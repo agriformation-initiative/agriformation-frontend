@@ -1,166 +1,82 @@
-// services/volunteerCallService.ts
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+import api from '@/lib/auth';
 
+export interface CallApplication {
+  _id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  message?: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  appliedAt: string;
+}
+
+export interface AdminVolunteerCall {
+  _id: string;
+  title: string;
+  description: string;
+  requirements: string;
+  designImage: { url: string; publicId?: string };
+  eventDate: string;
+  location: string;
+  numberOfVolunteers: number;
+  deadline: string;
+  category: string;
+  status: 'draft' | 'open' | 'closed' | 'cancelled';
+  isPublished: boolean;
+  applications: CallApplication[];
+  viewCount: number;
+  createdAt: string;
+}
+
+export const CALL_CATEGORIES = [
+  { value: 'farm_work', label: 'Farm work' },
+  { value: 'event_support', label: 'Event support' },
+  { value: 'community_outreach', label: 'Community outreach' },
+  { value: 'training', label: 'Training' },
+  { value: 'workshop', label: 'Workshop' },
+  { value: 'other', label: 'Other' },
+];
+
+const multipart = { headers: { 'Content-Type': 'multipart/form-data' } };
+
+/** Admin endpoints. Errors throw (axios), so callers handle them with try/catch. */
 export const volunteerCallService = {
-  // Admin endpoints
-  async getAllVolunteerCalls(params?: { status?: string; category?: string; page?: number }) {
-    const token = localStorage.getItem('token');
-    const queryParams = new URLSearchParams();
-    
-    if (params?.status) queryParams.append('status', params.status);
-    if (params?.category) queryParams.append('category', params.category);
-    if (params?.page) queryParams.append('page', params.page.toString());
-
-    const response = await fetch(
-      `${API_URL}/admin/volunteer-calls?${queryParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      }
-    );
-
-    return response.json();
+  async list(params: { status?: string; category?: string; page?: number } = {}) {
+    const res = await api.get('/admin/volunteer-calls', { params: { limit: 50, ...params } });
+    return res.data.data.calls as AdminVolunteerCall[];
   },
 
-  async getVolunteerCallDetails(id: string) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/admin/volunteer-calls/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    return response.json();
+  async get(id: string) {
+    const res = await api.get(`/admin/volunteer-calls/${id}`);
+    return res.data.data.call as AdminVolunteerCall;
   },
 
-  async createVolunteerCall(formData: FormData) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/admin/volunteer-calls`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    return response.json();
+  async create(form: FormData) {
+    const res = await api.post('/admin/volunteer-calls', form, multipart);
+    return res.data.data.call as AdminVolunteerCall;
   },
 
-  async updateVolunteerCall(id: string, formData: FormData) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/admin/volunteer-calls/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    return response.json();
+  async update(id: string, form: FormData) {
+    const res = await api.put(`/admin/volunteer-calls/${id}`, form, multipart);
+    return res.data.data.call as AdminVolunteerCall;
   },
 
-  async togglePublishStatus(id: string) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/admin/volunteer-calls/${id}/publish`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    return response.json();
+  async togglePublish(id: string) {
+    const res = await api.put(`/admin/volunteer-calls/${id}/publish`);
+    return res.data.data.call as AdminVolunteerCall;
   },
 
   async updateStatus(id: string, status: string) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/admin/volunteer-calls/${id}/status`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ status }),
-    });
-
-    return response.json();
+    const res = await api.put(`/admin/volunteer-calls/${id}/status`, { status });
+    return res.data.data.call as AdminVolunteerCall;
   },
 
   async updateApplicationStatus(callId: string, applicationId: string, status: string) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(
-      `${API_URL}/admin/volunteer-calls/${callId}/applications/${applicationId}`,
-      {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
-      }
-    );
-
-    return response.json();
+    const res = await api.put(`/admin/volunteer-calls/${callId}/applications/${applicationId}`, { status });
+    return res.data.data.call as AdminVolunteerCall;
   },
 
-  async deleteVolunteerCall(id: string) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/admin/volunteer-calls/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    return response.json();
-  },
-
-  async getVolunteerCallStats() {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/admin/volunteer-calls/stats`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    return response.json();
-  },
-
-  // Public endpoints
-  async getPublishedVolunteerCalls(params?: { category?: string; page?: number }) {
-    const queryParams = new URLSearchParams();
-    
-    if (params?.category) queryParams.append('category', params.category);
-    if (params?.page) queryParams.append('page', params.page.toString());
-
-    const response = await fetch(
-      `${API_URL}/volunteer-calls?${queryParams.toString()}`
-    );
-
-    return response.json();
-  },
-
-  async getPublicVolunteerCall(id: string) {
-    const response = await fetch(`${API_URL}/volunteer-calls/${id}`);
-    return response.json();
-  },
-
-  async applyForVolunteer(id: string, applicationData: any) {
-    const token = localStorage.getItem('token');
-    const headers: any = {
-      'Content-Type': 'application/json',
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${API_URL}/volunteer-calls/${id}/apply`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(applicationData),
-    });
-
-    return response.json();
+  async remove(id: string) {
+    await api.delete(`/admin/volunteer-calls/${id}`);
   },
 };

@@ -1,192 +1,98 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import DashboardLayout from '@/components/Layout/DashboardLayout';
+import { useCallback, useEffect, useState } from 'react';
+import { Clock, ScrollText, Sprout } from 'lucide-react';
 import { volunteerService } from '@/services/volunteerService';
 import { Volunteer } from '@/types/indexes';
-import { format } from 'date-fns';
-import { Clock, ScrollText, Trophy, ArrowRight } from 'lucide-react';
+import { formatDate } from '@/lib/format';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { PageHeader, StatTile, EmptyState, ErrorState, DashboardSkeleton } from '@/components/ui/dashboard';
 
 export default function VolunteerDashboard() {
   const [volunteer, setVolunteer] = useState<Volunteer | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  const loadProfile = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setFailed(false);
     try {
-      const response = await volunteerService.getProfile();
-      setVolunteer(response.data.volunteer);
-    } catch (error) {
-      console.error('Failed to load profile:', error);
+      const res = await volunteerService.getProfile();
+      setVolunteer(res.data.volunteer);
+    } catch (err) {
+      // A 404 means the application has not been approved into a volunteer profile yet
+      setVolunteer(null);
+      setFailed((err as { response?: { status?: number } }).response?.status !== 404);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  if (loading) {
-    return (
-      <DashboardLayout role="volunteer">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-stone-600">Loading your dashboard...</div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  useEffect(() => { load(); }, [load]);
 
+  if (loading) return <DashboardSkeleton />;
+  if (failed) return <ErrorState message="We could not load your dashboard." onRetry={load} />;
   if (!volunteer) {
     return (
-      <DashboardLayout role="volunteer">
-        <div className="text-center py-20">
-          <p className="text-stone-600 text-lg">No volunteer profile found</p>
-        </div>
-      </DashboardLayout>
+      <div className="mx-auto max-w-3xl rounded-xl bg-white">
+        <EmptyState
+          icon={Sprout}
+          title="Your volunteer profile is not ready yet"
+          description="It appears here once your application has been approved."
+        />
+      </div>
     );
   }
 
+  const activePrograms = volunteer.assignedPrograms?.filter((p) => p.status === 'active').length ?? 0;
+
   return (
-    <DashboardLayout role="volunteer">
-      <div className="space-y-10 py-8 px-5 md:px-8 max-w-7xl mx-auto">
-        {/* Welcome Header */}
-        <div className="text-center md:text-left">
-          <h1 className="text-4xl md:text-5xl font-bold text-stone-900 tracking-tight">
-            Welcome back, {volunteer.firstName}!
-          </h1>
-          <p className="text-xl text-stone-600 mt-3 font-light">
-            You&apos;re making a real difference in Nigerian agricultural education
-          </p>
-        </div>
+    <div className="mx-auto max-w-5xl">
+      <PageHeader
+        title={`Welcome back${volunteer.firstName ? `, ${volunteer.firstName}` : ''}`}
+        description="Here is a summary of your volunteering."
+      />
 
-        {/* Impact Stats Grid */}
-        <div className="grid md:grid-cols-3 gap-8">
-          {/* Hours Contributed */}
-          <div className="bg-white border border-stone-200 rounded-sm shadow-sm hover:shadow-md transition-shadow p-8">
-            <div className="flex items-center gap-5">
-              <div className="p-4 bg-emerald-100 rounded-sm">
-                <Clock className="w-8 h-8 text-green-700" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-stone-600">Hours Contributed</p>
-                <p className="text-4xl font-bold text-stone-900 mt-1">
-                  {volunteer.hoursContributed}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Active Programs */}
-          <div className="bg-white border border-stone-200 rounded-sm shadow-sm hover:shadow-md transition-shadow p-8">
-            <div className="flex items-center gap-5">
-              <div className="p-4 bg-amber-100 rounded-sm">
-                <Trophy className="w-8 h-8 text-amber-700" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-stone-600">Active Programs</p>
-                <p className="text-4xl font-bold text-stone-900 mt-1">
-                  {volunteer.assignedPrograms?.filter(p => p.status === 'active').length || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Certificates Earned */}
-          <div className="bg-white border border-stone-200 rounded-sm shadow-sm hover:shadow-md transition-shadow p-8">
-            <div className="flex items-center gap-5">
-              <div className="p-4 bg-teal-100 rounded-sm">
-                <ScrollText className="w-8 h-8 text-teal-700" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-stone-600">Certificates Earned</p>
-                <p className="text-4xl font-bold text-stone-900 mt-1">
-                  {volunteer.certificatesIssued?.length || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Profile Status Card */}
-        <div className="bg-white border border-stone-200 rounded-sm shadow-sm p-8">
-          <h2 className="text-2xl font-bold text-stone-900 mb-6">Profile Status</h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-stone-600">Current Application Status</p>
-              <StatusBadge status={volunteer.status} />
-            </div>
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-stone-600">Preferred Role</p>
-              <p className="text-lg font-semibold text-stone-800 capitalize">
-                {volunteer.preferredRole.replace(/-/g, ' ')}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Assigned Programs */}
-        {volunteer.assignedPrograms && volunteer.assignedPrograms.length > 0 && (
-          <div className="bg-white border border-stone-200 rounded-sm shadow-sm p-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-stone-900">Your Assigned Programs</h2>
-              <span className="text-sm text-stone-500">
-                {volunteer.assignedPrograms.length} program{volunteer.assignedPrograms.length > 1 ? 's' : ''}
-              </span>
-            </div>
-
-            <div className="space-y-6">
-              {volunteer.assignedPrograms.map((program) => (
-                <div
-                  key={program.id}
-                  className="border border-stone-200 rounded-sm p-6 hover:border-green-700/30 transition-colors group"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="text-xl font-bold text-stone-900">{program.programName}</h3>
-                      <p className="text-stone-600 mt-1">Role: <span className="font-medium">{program.role}</span></p>
-                    </div>
-                    <StatusBadge status={program.status} />
-                  </div>
-
-                  <div className="flex flex-wrap gap-6 text-sm text-stone-600 mt-4">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Start:</span>
-                      {format(new Date(program.startDate), 'MMMM d, yyyy')}
-                    </div>
-                    {program.endDate && (
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">End:</span>
-                        {format(new Date(program.endDate), 'MMMM d, yyyy')}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4">
-                    <a
-                      href={`/volunteer/programs/${program.id}`}
-                      className="inline-flex items-center gap-2 text-green-700 font-medium hover:gap-3 transition-all text-sm group"
-                    >
-                      View Program Details
-                      <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Motivational Footer */}
-        <div className="text-center py-12">
-          <p className="text-2xl font-light text-stone-700 italic max-w-3xl mx-auto leading-relaxed">
-            “Every hour you contribute helps a Nigerian student see agriculture not as punishment,
-            <br className="hidden md:block" />
-            but as a future full of dignity, innovation, and opportunity.”
-          </p>
-          <p className="text-green-700 font-semibold mt-4">— Team Agriformation</p>
-        </div>
+      <div className="grid gap-5 sm:grid-cols-3">
+        <StatTile icon={Clock} label="Hours contributed" value={volunteer.hoursContributed} />
+        <StatTile icon={Sprout} label="Active programs" value={activePrograms} />
+        <StatTile icon={ScrollText} label="Certificates earned" value={volunteer.certificatesIssued?.length ?? 0} />
       </div>
-    </DashboardLayout>
+
+      <section className="mt-8 rounded-xl bg-white p-6" aria-labelledby="status-heading">
+        <h2 id="status-heading" className="font-sans text-lg font-semibold">Profile status</h2>
+        <dl className="mt-4 grid gap-6 sm:grid-cols-2">
+          <div>
+            <dt className="text-sm text-stone-600">Application status</dt>
+            <dd className="mt-1"><StatusBadge status={volunteer.status} /></dd>
+          </div>
+          <div>
+            <dt className="text-sm text-stone-600">Preferred role</dt>
+            <dd className="mt-1 font-medium capitalize text-stone-900">{volunteer.preferredRole.replace(/-/g, ' ')}</dd>
+          </div>
+        </dl>
+      </section>
+
+      {volunteer.assignedPrograms && volunteer.assignedPrograms.length > 0 && (
+        <section className="mt-8 rounded-xl bg-white p-6" aria-labelledby="programs-heading">
+          <h2 id="programs-heading" className="font-sans text-lg font-semibold">Your programs</h2>
+          <ul className="mt-4 divide-y divide-stone-200">
+            {volunteer.assignedPrograms.map((program) => (
+              <li key={program.id} className="flex flex-wrap items-start justify-between gap-3 py-4 first:pt-0 last:pb-0">
+                <div>
+                  <p className="font-medium text-stone-900">{program.programName}</p>
+                  <p className="text-sm text-stone-600">Role: {program.role}</p>
+                  <p className="mt-1 text-sm text-stone-600">
+                    {formatDate(program.startDate, 'short')}
+                    {program.endDate ? ` to ${formatDate(program.endDate, 'short')}` : ''}
+                  </p>
+                </div>
+                <StatusBadge status={program.status} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
   );
 }

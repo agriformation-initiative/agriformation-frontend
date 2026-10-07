@@ -1,346 +1,191 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 'use client';
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
-import {
-  Plus,
-  Search,
-  Filter,
-  Calendar,
-  MapPin,
-  Eye,
-  EyeOff,
-  Edit,
-  Trash2,
-  Loader2,
-  Images,
-} from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Plus, Search, Calendar, MapPin, Eye, EyeOff, Trash2, Images } from 'lucide-react';
 import { galleryService } from '@/services/galleryService';
 import { Gallery } from '@/types/indexes';
-import DashboardLayout from '@/components/Layout/DashboardLayout';
+import { formatDate } from '@/lib/format';
+import Button from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/Modal';
+import { SelectField } from '@/components/ui/Field';
+import { PageHeader, StatTile, EmptyState, ErrorState, DashboardSkeleton } from '@/components/ui/dashboard';
+
+const CATEGORIES = [
+  { value: 'all', label: 'All categories' },
+  { value: 'farm_excursion', label: 'Farm excursions' },
+  { value: 'workshop', label: 'Workshops' },
+  { value: 'community_event', label: 'Community events' },
+  { value: 'training', label: 'Training sessions' },
+  { value: 'other', label: 'Other' },
+];
+
+const EMPTY_STATS = { totalGalleries: 0, publishedGalleries: 0, totalPhotos: 0, totalViews: 0 };
 
 export default function AdminGalleriesPage() {
-  const router = useRouter();
   const [galleries, setGalleries] = useState<Gallery[]>([]);
+  const [stats, setStats] = useState(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [filterPublished, setFilterPublished] = useState<string>('all');
-  const [showFilters, setShowFilters] = useState(false);
-  const [stats, setStats] = useState({
-    totalGalleries: 0,
-    publishedGalleries: 0,
-    totalPhotos: 0,
-    totalViews: 0,
-  });
+  const [failed, setFailed] = useState(false);
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('all');
+  const [published, setPublished] = useState('all');
+  const [deleting, setDeleting] = useState<Gallery | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const categories = [
-    { value: 'all', label: 'All Categories' },
-    { value: 'farm_excursion', label: 'Farm Excursions' },
-    { value: 'workshop', label: 'Workshops' },
-    { value: 'community_event', label: 'Community Events' },
-    { value: 'training', label: 'Training Sessions' },
-    { value: 'other', label: 'Other' },
-  ];
-
-  useEffect(() => {
-    fetchGalleries();
-    fetchStats();
-  }, [filterCategory, filterPublished]);
-
-  const fetchGalleries = async () => {
+  const load = useCallback(async () => {
+    setFailed(false);
     try {
-      setLoading(true);
-      const params: any = {};
-      if (filterCategory !== 'all') params.category = filterCategory;
-      if (filterPublished !== 'all') params.isPublished = filterPublished === 'published';
-
-      const response = await galleryService.getAllGalleries(params);
-      setGalleries(response.data.galleries);
-    } catch (error) {
-      console.error('Error fetching galleries:', error);
+      const params: { category?: string; isPublished?: boolean } = {};
+      if (category !== 'all') params.category = category;
+      if (published !== 'all') params.isPublished = published === 'published';
+      // Albums and stats are independent, so fetch them together
+      const [list, statRes] = await Promise.all([
+        galleryService.getAllGalleries(params),
+        galleryService.getGalleryStats().catch(() => null),
+      ]);
+      setGalleries(list.data.galleries);
+      if (statRes) setStats(statRes.data.stats);
+    } catch {
+      setFailed(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, [category, published]);
 
-  const fetchStats = async () => {
+  useEffect(() => { load(); }, [load]);
+
+  const togglePublish = async (g: Gallery) => {
     try {
-      const response = await galleryService.getGalleryStats();
-      console.log('Stats response:', response);
-      setStats(response.data.stats);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
+      await galleryService.togglePublishStatus(g._id);
+      toast.success(g.isPublished ? 'Album unpublished' : 'Album published');
+      load();
+    } catch {
+      toast.error('We could not change the publish status. Try again.');
     }
   };
 
-  const handleTogglePublish = async (id: string) => {
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setBusy(true);
     try {
-      await galleryService.togglePublishStatus(id);
-      fetchGalleries();
-      fetchStats();
-    } catch (error) {
-      console.error('Error toggling publish status:', error);
+      await galleryService.deleteGallery(deleting._id);
+      toast.success('Album deleted');
+      setDeleting(null);
+      load();
+    } catch {
+      toast.error('We could not delete the album. Try again.');
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this gallery? This action cannot be undone.')) {
-      return;
-    }
+  const q = query.trim().toLowerCase();
+  const shown = q
+    ? galleries.filter((g) => g.title.toLowerCase().includes(q) || g.description.toLowerCase().includes(q))
+    : galleries;
 
-    try {
-      await galleryService.deleteGallery(id);
-      fetchGalleries();
-      fetchStats();
-    } catch (error) {
-      console.error('Error deleting gallery:', error);
-    }
-  };
-
-  const filteredGalleries = galleries.filter((gallery) =>
-    gallery.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    gallery.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  if (loading) return <DashboardSkeleton />;
 
   return (
-    <DashboardLayout role="admin">
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-stone-900">Photo Galleries</h1>
-            <p className="text-stone-600 mt-1">Manage your photo galleries and albums</p>
-          </div>
-          <button
-            onClick={() => router.push('/admin/gallery/create')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-700 text-white rounded-md font-medium hover:bg-green-800 transition-colors shadow-sm"
-          >
-            <Plus size={20} />
-            Create Gallery
-          </button>
-        </div>
+    <div className="mx-auto max-w-6xl">
+      <PageHeader
+        title="Photo galleries"
+        description="Create albums and choose what appears on the public gallery."
+        action={<Button href="/admin/gallery/create"><Plus size={18} aria-hidden="true" /> Create album</Button>}
+      />
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-stone-600 text-sm font-medium">Total Galleries</span>
-              <Images className="text-green-700" size={20} />
-            </div>
-            <p className="text-3xl font-bold text-stone-900">{stats.totalGalleries}</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-stone-600 text-sm font-medium">Published</span>
-              <Eye className="text-blue-600" size={20} />
-            </div>
-            <p className="text-3xl font-bold text-stone-900">{stats.publishedGalleries}</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-stone-600 text-sm font-medium">Total Photos</span>
-              <Images className="text-purple-600" size={20} />
-            </div>
-            <p className="text-3xl font-bold text-stone-900">{stats.totalPhotos}</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-stone-600 text-sm font-medium">Total Views</span>
-              <Eye className="text-amber-600" size={20} />
-            </div>
-            <p className="text-3xl font-bold text-stone-900">{stats.totalViews}</p>
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile icon={Images} label="Albums" value={stats.totalGalleries} />
+        <StatTile icon={Eye} label="Published" value={stats.publishedGalleries} />
+        <StatTile icon={Images} label="Photos" value={stats.totalPhotos} />
+        <StatTile icon={Eye} label="Views" value={stats.totalViews} />
+      </div>
+
+      <div className="mt-8 grid gap-4 rounded-xl bg-white p-5 sm:grid-cols-3">
+        <div>
+          <label htmlFor="search" className="mb-1.5 block text-sm font-medium text-stone-800">Search</label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500" size={18} aria-hidden="true" />
+            <input id="search" type="search" value={query} onChange={(e) => setQuery(e.target.value)}
+              className="w-full rounded-md border border-stone-300 bg-white py-2.5 pl-10 pr-4 focus:border-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-700/25" />
           </div>
         </div>
+        <SelectField id="category" label="Category" value={category} onChange={(e) => setCategory(e.target.value)}>
+          {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </SelectField>
+        <SelectField id="published" label="Status" value={published} onChange={(e) => setPublished(e.target.value)}>
+          <option value="all">All</option>
+          <option value="published">Published</option>
+          <option value="draft">Draft</option>
+        </SelectField>
+      </div>
 
-        {/* Search and Filters */}
-        <div className="bg-white p-5 rounded-lg shadow-sm border border-stone-200">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search galleries..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-            </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 border border-stone-300 rounded-md hover:bg-stone-50 transition-colors"
-            >
-              <Filter size={20} />
-              Filters
-            </button>
-          </div>
-
-          {showFilters && (
-            <div className="grid sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-stone-200">
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  Category
-                </label>
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={filterPublished}
-                  onChange={(e) => setFilterPublished(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="published">Published</option>
-                  <option value="draft">Draft</option>
-                </select>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Galleries Grid */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-green-700" />
-          </div>
-        ) : filteredGalleries.length > 0 ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredGalleries.map((gallery) => (
-              <div
-                key={gallery._id}
-                className="bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden hover:shadow-md transition-shadow"
-              >
-                <div className="aspect-video relative bg-stone-200">
-                  {gallery.coverImage?.url ? (
-                    <Image
-                      src={gallery.coverImage.url}
-                      width={600}
-                      height={400}
-                      alt={gallery.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Images className="text-stone-400" size={48} />
-                    </div>
-                  )}
-                  <div className="absolute top-3 right-3 flex gap-2">
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded ${
-                        gallery.isPublished
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-stone-100 text-stone-700'
-                      }`}
-                    >
-                      {gallery.isPublished ? 'Published' : 'Draft'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-5 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-bold text-lg text-stone-900 line-clamp-2">
-                      {gallery.title}
-                    </h3>
-                  </div>
-
-                  <p className="text-sm text-stone-600 line-clamp-2">
-                    {gallery.description}
-                  </p>
-
-                  <div className="flex flex-wrap gap-3 text-xs text-stone-500">
-                    <div className="flex items-center gap-1">
-                      <Calendar size={14} />
-                      <span>{formatDate(gallery.eventDate)}</span>
-                    </div>
-                    {gallery.location && (
-                      <div className="flex items-center gap-1">
-                        <MapPin size={14} />
-                        <span className="truncate max-w-[120px]">{gallery.location}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-stone-100">
-                    <span className="text-sm text-stone-600">
-                      {gallery.photoCount} {gallery.photoCount === 1 ? 'photo' : 'photos'}
-                    </span>
-                    <span className="text-xs text-stone-500">{gallery.viewCount} views</span>
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      onClick={() => router.push(`/admin/gallery/${gallery._id}`)}
-                      className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-green-700 text-white rounded-md text-sm font-medium hover:bg-green-800 transition-colors"
-                    >
-                      <Edit size={16} />
-                      Manage
-                    </button>
-                    <button
-                      onClick={() => handleTogglePublish(gallery._id)}
-                      className="px-3 py-2 border border-stone-300 rounded-md hover:bg-stone-50 transition-colors"
-                      title={gallery.isPublished ? 'Unpublish' : 'Publish'}
-                    >
-                      {gallery.isPublished ? (
-                        <EyeOff size={16} className="text-stone-700" />
-                      ) : (
-                        <Eye size={16} className="text-stone-700" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(gallery._id)}
-                      className="px-3 py-2 border border-red-300 text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+      <div className="mt-6">
+        {failed ? (
+          <ErrorState message="We could not load the albums." onRetry={load} />
+        ) : shown.length === 0 ? (
+          <div className="rounded-xl bg-white">
+            <EmptyState
+              icon={Images}
+              title="No albums found"
+              description={q ? 'Try a different search or filter.' : 'Create your first album to start the public gallery.'}
+              action={!q && <Button href="/admin/gallery/create">Create album</Button>}
+            />
           </div>
         ) : (
-          <div className="text-center py-20 bg-white rounded-lg border border-stone-200">
-            <Images className="w-16 h-16 mx-auto text-stone-300 mb-4" />
-            <h3 className="text-lg font-semibold text-stone-900 mb-2">No galleries found</h3>
-            <p className="text-stone-600 mb-6">
-              {searchQuery
-                ? 'Try adjusting your search or filters'
-                : 'Get started by creating your first gallery'}
-            </p>
-            <button
-              onClick={() => router.push('/admin/gallery/create')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-700 text-white rounded-md font-medium hover:bg-green-800 transition-colors"
-            >
-              <Plus size={20} />
-              Create Gallery
-            </button>
-          </div>
+          <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {shown.map((g) => (
+              <li key={g._id} className="flex flex-col overflow-hidden rounded-xl bg-white">
+                <div className="relative aspect-3/2 bg-stone-200">
+                  {g.coverImage?.url ? (
+                    <Image src={g.coverImage.url} alt="" fill sizes="(min-width: 1024px) 360px, 50vw" className="object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center"><Images className="text-stone-400" size={40} aria-hidden="true" /></div>
+                  )}
+                  <span className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-xs font-semibold ${g.isPublished ? 'bg-brand-100 text-brand-900' : 'bg-white text-stone-700'}`}>
+                    {g.isPublished ? 'Published' : 'Draft'}
+                  </span>
+                </div>
+                <div className="flex flex-1 flex-col p-5">
+                  <h2 className="line-clamp-2 font-sans text-lg font-semibold">{g.title}</h2>
+                  <p className="mt-1 line-clamp-2 text-stone-600">{g.description}</p>
+                  <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-stone-600">
+                    <li className="flex items-center gap-1.5"><Calendar size={14} aria-hidden="true" />{formatDate(g.eventDate, 'short')}</li>
+                    {g.location && <li className="flex min-w-0 items-center gap-1.5"><MapPin size={14} aria-hidden="true" /><span className="truncate">{g.location}</span></li>}
+                  </ul>
+                  <p className="mt-2 text-sm text-stone-600">{g.photoCount} {g.photoCount === 1 ? 'photo' : 'photos'} · {g.viewCount} views</p>
+                  <div className="mt-auto flex gap-2 pt-4">
+                    <Link href={`/admin/gallery/${g._id}`} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-brand-700 px-4 font-semibold text-white hover:bg-brand-800">
+                      Manage<span className="sr-only"> {g.title}</span>
+                    </Link>
+                    <button type="button" onClick={() => togglePublish(g)} aria-label={`${g.isPublished ? 'Unpublish' : 'Publish'} ${g.title}`}
+                      className="flex h-11 w-11 items-center justify-center rounded-md border border-stone-300 text-stone-700 hover:bg-stone-50">
+                      {g.isPublished ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                    <button type="button" onClick={() => setDeleting(g)} aria-label={`Delete ${g.title}`}
+                      className="flex h-11 w-11 items-center justify-center rounded-md border border-red-300 text-red-700 hover:bg-red-50">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
-    </DashboardLayout>
+
+      {deleting && (
+        <ConfirmDialog
+          title={`Delete "${deleting.title}"?`}
+          message={`This removes the album and its ${deleting.photoCount} ${deleting.photoCount === 1 ? 'photo' : 'photos'} for good. This cannot be undone.`}
+          confirmLabel="Delete album"
+          loading={busy}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
+    </div>
   );
 }

@@ -1,118 +1,107 @@
 'use client';
-import React, { useState } from 'react';
-import { Menu, X, Facebook, Instagram, Linkedin, ChevronRight } from 'lucide-react';
-import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from "next/navigation";
+import { usePathname } from 'next/navigation';
+import { Menu, X } from 'lucide-react';
+import Button from '@/components/ui/Button';
+import SocialIcon from '@/components/shared/SocialIcon';
+import { NAV_LINKS, SITE, isActivePath, isAppShellPath } from '@/lib/site';
+import Image from "next/image"
 
 export const Navigation = () => {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
 
-  // All hooks must be called unconditionally at the top
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
+  // Close the menu on navigation and on Escape; lock page scroll while it is open
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [open]);
 
-  // Early return AFTER all hooks are called
-  if (
-    pathname.startsWith('/admin') ||
-    pathname.startsWith('/volunteer/dashboard') ||
-    pathname.startsWith('/volunteer/profile') ||
-    pathname.startsWith('/dashboard')
-  ) {
-    return null;
-  }
+  if (isAppShellPath(pathname)) return null;
+
+  const linkClass = (href: string) =>
+    `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      isActivePath(pathname, href) ? 'text-brand-800' : 'text-stone-600 hover:text-stone-900'
+    }`;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md border-b border-stone-200/80 z-50">
-      <div className="max-w-6xl mx-auto px-4 py-3.5">
-        <div className="flex items-center justify-between">
-          <Link href='/' className="flex items-center gap-2.5">
-            <Image
-              src='/images/agriformation.png'
-              alt='logo'
-              width={70}
-              height={50}
-              className='w-30 h-full object-cover'
-            />
-          </Link>
-          
-          <div className="hidden md:flex items-center gap-1">
-            <Link href='/'
-              className={`px-4 py-2 text-sm font-medium transition-colors ${currentPath === '/' ? 'text-green-800' : 'text-stone-600 hover:text-stone-900'}`}
-            >
-              Home
-            </Link>
-            <Link href='/about'
-              className={`px-4 py-2 text-sm font-medium transition-colors ${currentPath === '/about' ? 'text-green-800' : 'text-stone-600 hover:text-stone-900'}`}
-            >
-              About
-            </Link>
-            <Link href='/programs'
-              className={`px-4 py-2 text-sm font-medium transition-colors ${currentPath === '/programs' ? 'text-green-800' : 'text-stone-600 hover:text-stone-900'}`}
-            >
-              Programs
-            </Link>
-            <Link href='/gallery'
-              className={`px-4 py-2 text-sm font-medium transition-colors ${currentPath === '/gallery' ? 'text-green-800' : 'text-stone-600 hover:text-stone-900'}`}
-            >
-              Gallery
-            </Link>
-            <Link href='/blog'
-              className={`px-4 py-2 text-sm font-medium transition-colors ${currentPath.startsWith('/blog') ? 'text-green-800' : 'text-stone-600 hover:text-stone-900'}`}
-            >
-              Blog
-            </Link>
-            <Link href='/contact'
-              className={`px-4 py-2 text-sm font-medium transition-colors ${currentPath === '/contact' ? 'text-green-800' : 'text-stone-600 hover:text-stone-900'}`}
-            >
-              Contact
-            </Link>
-            <Link href='/volunteer'
-              className="ml-2 px-5 py-2 bg-green-700 text-white text-sm font-medium rounded hover:bg-green-900 transition-colors"
-            >
-              Get Involved
-            </Link>
-          </div>
+    <header className="sticky top-0 z-50 border-b border-stone-200 bg-white">
+      <nav aria-label="Main" className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3 md:px-8">
+        <Image src="/images/agronext.png" alt="Logo" width={100} height={40} />
 
-          <button 
-            className="md:hidden p-2 hover:bg-stone-100 rounded transition-colors"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X size={22} strokeWidth={2} /> : <Menu size={22} strokeWidth={2} />}
-          </button>
+        <div className="hidden items-center gap-1 lg:flex">
+          {NAV_LINKS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={isActivePath(pathname, item.href) ? 'page' : undefined}
+              className={linkClass(item.href)}
+            >
+              {item.label}
+            </Link>
+          ))}
+          <Button href="/volunteer" className="ml-3 !min-h-10 !py-2 text-sm">Volunteer with us</Button>
         </div>
 
-        {mobileMenuOpen && (
-          <div className="md:hidden absolute left-0 right-0 top-full bg-white border-b border-stone-200 shadow-lg">
-            <div className="px-5 py-6 space-y-1">
-              {/* Mobile menu items... */}
-              <Link href='/' onClick={() => setMobileMenuOpen(false)} className={`...`}>Home {currentPath === '/' && <ChevronRight size={18} />}</Link>
-              {/* ... other links ... */}
+        <button
+          type="button"
+          className="-mr-2 flex h-11 w-11 items-center justify-center rounded-md text-stone-700 hover:bg-stone-100 lg:hidden"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls="mobile-menu"
+          aria-label={open ? 'Close menu' : 'Open menu'}
+        >
+          {open ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </nav>
 
-              <div className="pt-6">
-                <Link href='/volunteer' onClick={() => setMobileMenuOpen(false)} className="w-full px-5 py-4 bg-green-800 text-white font-semibold rounded text-center hover:bg-green-900 transition-colors shadow-sm">
-                  Get Involved
-                </Link>
-              </div>
-
-              <div className="pt-8 mt-8 border-t border-stone-200">
-                <p className="text-xs uppercase tracking-widest text-stone-500 font-semibold mb-4">Connect With Us</p>
-                <div className="flex gap-3">
-                  <a href="https://www.facebook.com/profile.php?id=61560490960753" target="_blank" rel="noopener noreferrer" className="w-11 h-11 bg-stone-100 rounded flex items-center justify-center hover:bg-green-800 hover:text-white transition-colors">
-                    <Facebook size={18} strokeWidth={2} />
-                  </a>
-                  <a href="https://www.instagram.com/agriformation_initiative" target="_blank" rel="noopener noreferrer" className="w-11 h-11 bg-stone-100 rounded flex items-center justify-center hover:bg-green-800 hover:text-white transition-colors">
-                    <Instagram size={18} strokeWidth={2} />
-                  </a>
-                  <a href="https://www.linkedin.com/company/agriformation-initiative/" target="_blank" rel="noopener noreferrer" className="w-11 h-11 bg-stone-100 rounded flex items-center justify-center hover:bg-green-800 hover:text-white transition-colors">
-                    <Linkedin size={18} strokeWidth={2} />
-                  </a>
-                </div>
-              </div>
+      {open && (
+        <div
+          id="mobile-menu"
+          className="absolute inset-x-0 top-full max-h-dvh overflow-y-auto border-b border-stone-200 bg-white shadow-overlay lg:hidden"
+        >
+          <div className="mx-auto max-w-6xl px-5 pb-8 pt-2 md:px-8">
+            <ul>
+              {NAV_LINKS.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    aria-current={isActivePath(pathname, item.href) ? 'page' : undefined}
+                    className={`flex min-h-12 items-center border-b border-stone-100 text-lg ${
+                      isActivePath(pathname, item.href) ? 'font-semibold text-brand-800' : 'text-stone-800'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Button href="/volunteer" fullWidth className="mt-6">Volunteer with us</Button>
+            <div className="mt-6 flex gap-3">
+              {SITE.socials.map((s) => (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.label}
+                  className="flex h-11 w-11 items-center justify-center rounded-md bg-stone-100 text-stone-700 hover:bg-brand-700 hover:text-white"
+                >
+                  <SocialIcon label={s.label} />
+                </a>
+              ))}
             </div>
           </div>
-        )}
-      </div>
-    </nav>
+        </div>
+      )}
+    </header>
   );
 };

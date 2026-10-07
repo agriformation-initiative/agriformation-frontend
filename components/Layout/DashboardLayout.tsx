@@ -3,188 +3,164 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useAuthStore } from '@/store/authStore';
 import {
-  Home,
-  User,
-  Users,
-  FileText,
-  Settings,
-  LogOut,
-  Menu,
-  X,
-  Images,
-  Megaphone,
-  BookOpen,
+  Home, User, Users, FileText, Settings, LogOut, Menu, X, Images, Megaphone, BookOpen,
 } from 'lucide-react';
-import Image from 'next/image';
+import { useAuthStore } from '@/store/authStore';
+import Logo from '@/components/ui/Logo';
+import Skeleton from '@/components/ui/Skeleton';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  role: 'volunteer' | 'admin' | 'superadmin';
+  /** Which area this shell serves. Users of the other kind are sent to their own dashboard. */
+  area: 'admin' | 'volunteer';
 }
 
-export default function DashboardLayout({ children, role }: DashboardLayoutProps) {
+const VOLUNTEER_NAV = [
+  { name: 'Dashboard', href: '/volunteer/dashboard', icon: Home },
+  { name: 'My profile', href: '/volunteer/profile', icon: User },
+];
+
+const ADMIN_NAV = [
+  { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
+  { name: 'Applications', href: '/admin/applications', icon: FileText },
+  { name: 'Volunteers', href: '/admin/volunteers', icon: Users },
+  { name: 'Volunteer calls', href: '/admin/volunteer-calls', icon: Megaphone },
+  { name: 'Gallery', href: '/admin/gallery', icon: Images },
+  { name: 'Blog', href: '/admin/blog', icon: BookOpen },
+];
+
+const ROLE_LABEL = { volunteer: 'Volunteer', admin: 'Administrator', superadmin: 'Super admin' } as const;
+
+export default function DashboardLayout({ children, area }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAuthenticated, clearAuth, initAuth } = useAuthStore();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { user, isAuthenticated, hydrated, clearAuth, initAuth } = useAuthStore();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => initAuth(), [initAuth]);
+
+  const isAdminUser = user?.role === 'admin' || user?.role === 'superadmin';
+  const allowed = isAuthenticated && (area === 'admin' ? isAdminUser : user?.role === 'volunteer');
 
   useEffect(() => {
-    initAuth();
-    if (!isAuthenticated) {
-      router.replace('/auth');
-    }
-  }, [isAuthenticated, router, initAuth]);
+    if (!hydrated) return;
+    if (!isAuthenticated) router.replace('/auth');
+    else if (!allowed) router.replace(isAdminUser ? '/admin/dashboard' : '/volunteer/dashboard');
+  }, [hydrated, isAuthenticated, allowed, isAdminUser, router]);
+
+  useEffect(() => setOpen(false), [pathname]);
 
   useEffect(() => {
-    setIsSidebarOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (isSidebarOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
     return () => {
-      document.body.style.overflow = 'unset';
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
     };
-  }, [isSidebarOpen]);
+  }, [open]);
 
-  const handleLogout = () => {
+  if (!hydrated || !allowed || !user) {
+    return (
+      <div className="min-h-screen p-8" role="status" aria-label="Loading your dashboard">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="mt-6 h-40 w-full max-w-3xl" />
+      </div>
+    );
+  }
+
+  const navItems = [
+    ...(area === 'admin' ? ADMIN_NAV : VOLUNTEER_NAV),
+    ...(user.role === 'superadmin' ? [{ name: 'System users', href: '/admin/users', icon: Settings }] : []),
+  ];
+  const initials = user.fullName.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+
+  const logout = () => {
     clearAuth();
     router.push('/auth');
   };
 
-  if (!isAuthenticated || !user) return null;
-
-  const navItems =
-    role === 'volunteer'
-      ? [
-          { name: 'Dashboard', href: '/volunteer/dashboard', icon: Home },
-          { name: 'My Profile', href: '/volunteer/profile', icon: User },
-        ]
-      : [
-          { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
-          { name: 'Applications', href: '/admin/applications', icon: FileText },
-          { name: 'Volunteers', href: '/admin/volunteers', icon: Users },
-          { name: 'Gallery', href: '/admin/gallery', icon: Images },
-          { name: 'Volunteer Calls', href: '/admin/volunteer-calls', icon: Megaphone },
-          { name: 'Blog', href: '/admin/blog', icon: BookOpen },
-          ...(user.role === 'superadmin'
-            ? [{ name: 'System Users', href: '/admin/users', icon: Settings }]
-            : []),
-        ];
-
-  const roleDisplay = {
-    volunteer: 'Volunteer',
-    admin: 'Administrator',
-    superadmin: 'Super Admin',
-  }[role];
-
   return (
-    <div className="min-h-screen bg-stone-50 flex">
-      {/* Hamburger Button - Mobile only */}
+    <div className="flex min-h-screen">
       <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="fixed top-4 left-4 z-[60] p-2.5 bg-white rounded-md shadow-md hover:shadow-lg transition-shadow border border-stone-200 md:hidden"
-        aria-label="Toggle menu"
+        type="button"
+        onClick={() => setOpen(true)}
+        className="fixed left-3 top-3 z-40 flex h-11 w-11 items-center justify-center rounded-md bg-white text-stone-700 shadow-raised md:hidden"
+        aria-label="Open menu"
+        aria-expanded={open}
       >
-        <Menu size={22} className="text-stone-700" />
+        <Menu size={22} />
       </button>
 
-      {/* Backdrop Overlay - Mobile only */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 z-40 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+      {open && <div className="fixed inset-0 z-40 bg-stone-900/50 md:hidden" onClick={() => setOpen(false)} aria-hidden="true" />}
 
-      {/* Sidebar */}
       <aside
-        className={`fixed md:relative md:translate-x-0 top-0 left-0 h-full md:h-screen w-72 bg-white border-r border-stone-200 shadow-xl md:shadow-none z-50 md:z-auto flex flex-col flex-shrink-0 transition-transform duration-300 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-stone-200 bg-white transition-transform duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0 ${
+          open ? 'translate-x-0' : '-translate-x-full'
         }`}
+        aria-label="Dashboard"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-stone-200">
-          <div className="flex items-center gap-2">
-            <Image src="/images/agriformation.png" alt="Logo" width={80} height={80} />
-          </div>
+        <div className="flex items-center justify-between border-b border-stone-200 p-4">
+          <Logo showTagline={false} />
           <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="p-2 hover:bg-stone-100 rounded-md transition-colors md:hidden"
+            type="button"
+            onClick={() => setOpen(false)}
+            className="flex h-11 w-11 items-center justify-center rounded-md text-stone-600 hover:bg-stone-100 md:hidden"
             aria-label="Close menu"
           >
-            <X size={22} className="text-stone-600" />
+            <X size={22} />
           </button>
         </div>
 
-        {/* Role Badge */}
-        <div className="px-5 pt-4 pb-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-md text-sm font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-700"></span>
-            {roleDisplay}
-          </div>
-        </div>
+        <p className="px-5 pb-1 pt-4 text-xs font-semibold uppercase tracking-widest text-stone-500">
+          {ROLE_LABEL[user.role]}
+        </p>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-2 overflow-y-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-green-700 text-white'
-                    : 'text-stone-700 hover:bg-stone-100'
-                }`}
-              >
-                <Icon size={20} />
-                <span className="font-medium">{item.name}</span>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-3 py-2" aria-label="Dashboard sections">
+          <ul className="space-y-1">
+            {navItems.map(({ name, href, icon: Icon }) => {
+              const active = pathname === href || (href !== '/admin/dashboard' && href !== '/volunteer/dashboard' && pathname.startsWith(`${href}/`));
+              return (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    aria-current={active ? 'page' : undefined}
+                    className={`flex min-h-11 items-center gap-3 rounded-md px-3 font-medium transition-colors ${
+                      active ? 'bg-brand-700 text-white' : 'text-stone-700 hover:bg-stone-100'
+                    }`}
+                  >
+                    <Icon size={20} aria-hidden="true" />
+                    {name}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </nav>
 
-        {/* User Section */}
-        <div className="p-5 border-t border-stone-200">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-11 h-11 bg-green-700 rounded-full flex items-center justify-center text-white font-semibold">
-              {user.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
+        <div className="border-t border-stone-200 p-4">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-800" aria-hidden="true">
+              {initials}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-stone-900 truncate text-sm">{user.fullName}</p>
-              <p className="text-xs text-stone-500 truncate">{user.email}</p>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-stone-900">{user.fullName}</p>
+              <p className="truncate text-sm text-stone-600">{user.email}</p>
             </div>
           </div>
-
           <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-stone-100 text-stone-700 rounded-md font-medium hover:bg-stone-200 transition-colors"
+            type="button"
+            onClick={logout}
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-stone-100 font-medium text-stone-800 transition-colors hover:bg-stone-200"
           >
-            <LogOut size={18} />
-            <span>Log out</span>
+            <LogOut size={18} aria-hidden="true" /> Log out
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 min-w-0">
-        <main className={`min-h-screen p-6 md:p-10 transition-all duration-300 ${
-          isSidebarOpen ? 'blur-sm md:blur-none' : ''
-        }`}>
-          <div className="pt-14 md:pt-0">
-            {children}
-          </div>
-        </main>
-      </div>
+      <div className="min-w-0 flex-1 px-4 pb-10 pt-16 md:px-10 md:pt-10">{children}</div>
     </div>
   );
 }

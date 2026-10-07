@@ -120,7 +120,7 @@ export interface Gallery {
   coverImage?: CoverImage;
   eventDate: string;
   location?: string;
-  category: 'farm_excursion' | 'workshop' | 'community_event' | 'training' | 'other';
+  category: 'farm_excursion' | 'workshop' | 'community_event' | 'training' | 'blog_post' | 'other';
   photos: Photo[];
   isPublished: boolean;
   viewCount: number;
@@ -162,4 +162,37 @@ export interface UpdateGalleryData {
 export interface PhotoOrder {
   photoId: string;
   order: number;
+}
+
+// ── Public blog and volunteer call shapes ────────────────────────────────────
+export interface BlogPostSummary {
+  _id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  coverImage: { url: string };
+  category: string;
+  tags?: string[];
+  publishedAt: string;
+  readTime: number;
+  author?: { fullName: string };
+}
+
+export interface BlogPostFull extends BlogPostSummary {
+  content: string;
+  viewCount: number;
+}
+
+export interface PublicVolunteerCall {
+  _id: string;
+  title: string;
+  description: string;
+  requirements: string;
+  location: string;
+  eventDate: string;
+  deadline: string;
+  numberOfVolunteers: number;
+  category: string;
+  status?: string;
+  designImage: { url: string };
 }

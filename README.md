@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AgroNext Agricultural Development Initiative: website
 
-## Getting Started
+Next.js 15 (App Router) front end for the AgroNext public site, volunteer area and admin dashboard.
+It talks to the Express API in `../backend`.
 
-First, run the development server:
+## Run it
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment (`.env.local`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_API_URL` | Backend API base URL, including `/api` (default `http://localhost:5000/api`) |
+| `STRIPE_SECRET_KEY` | Server-side Stripe key for `/donate`. Without it the donate form shows a clear "not set up yet" message |
 
-## Learn More
+## Structure
 
-To learn more about Next.js, take a look at the following resources:
+- `app/(pages)/` public pages, volunteer area (`volunteer/dashboard`, `volunteer/profile`) and admin (`admin/*`)
+- `components/ui/` shared building blocks (Button, Field, Modal, table, dashboard helpers)
+- `components/shared/` site chrome and cards (Navbar, Footer, MediaCard)
+- `lib/site.ts` site name, contact details and navigation. Change the brand here first
+- `lib/programs.ts` program content shared by the home and programs pages
+- `app/globals.css` design tokens (`@theme`): brand colours, fonts, shadows
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Public pages that load data (gallery, blog, volunteer calls) render on the server. Dashboards are client
+components behind `components/Layout/DashboardLayout.tsx`, which checks the signed-in role.

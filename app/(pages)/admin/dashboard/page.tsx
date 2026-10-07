@@ -1,178 +1,85 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import DashboardLayout from '@/components/Layout/DashboardLayout';
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Users, UserCheck, Clock, FileText } from 'lucide-react';
 import { adminService } from '@/services/adminService';
 import { DashboardStats, VolunteerApplication } from '@/types/indexes';
-import { format } from 'date-fns';
-import { FaUsers, FaUserCheck, FaClock, FaFileAlt, FaEllipsisV } from 'react-icons/fa';
-import Link from 'next/link';
+import { formatDate } from '@/lib/format';
 import StatusBadge from '@/components/ui/StatusBadge';
+import Button from '@/components/ui/Button';
+import { PageHeader, StatTile, EmptyState, ErrorState, DashboardSkeleton } from '@/components/ui/dashboard';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentApplications, setRecentApplications] = useState<VolunteerApplication[]>([]);
+  const [recent, setRecent] = useState<VolunteerApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
-
-  const loadDashboard = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setFailed(false);
     try {
-      const response = await adminService.getDashboardStats();
-      setStats(response.data.stats);
-      setRecentApplications(response.data.recentApplications);
-    } catch (error) {
-      console.error('Failed to load dashboard:', error);
+      const res = await adminService.getDashboardStats();
+      setStats(res.data.stats);
+      setRecent(res.data.recentApplications);
+    } catch {
+      setFailed(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  if (loading) {
-    return (
-      <DashboardLayout role="admin">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading dashboard...</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return <DashboardSkeleton />;
+  if (failed) return <ErrorState message="We could not load the dashboard." onRetry={load} />;
 
   return (
-    <DashboardLayout role="admin">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 ">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900 mb-1">Welcome back 👋</h1>
-          <p className="text-gray-600">Here&apos;s what&apos;s happening with your volunteers today</p>
+    <div className="mx-auto max-w-6xl">
+      <PageHeader
+        title="Dashboard"
+        description="A summary of volunteers and applications."
+        action={<Button href="/admin/applications">Review applications</Button>}
+      />
+
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile icon={Users} label="Total volunteers" value={stats?.totalVolunteers ?? 0} href="/admin/volunteers" />
+        <StatTile icon={UserCheck} label="Approved volunteers" value={stats?.activeVolunteers ?? 0} href="/admin/volunteers" />
+        <StatTile icon={FileText} label="Awaiting review" value={stats?.pendingApplications ?? 0} href="/admin/applications" />
+        <StatTile icon={Clock} label="Hours contributed" value={`${stats?.totalHoursContributed ?? 0}h`} />
+      </div>
+
+      <section className="mt-8 overflow-hidden rounded-xl bg-white" aria-labelledby="recent-heading">
+        <div className="flex items-center justify-between border-b border-stone-200 px-6 py-4">
+          <h2 id="recent-heading" className="font-sans text-lg font-semibold">Recent applications</h2>
+          <Link href="/admin/applications" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand-700 hover:underline">
+            View all
+          </Link>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          <StatCard
-            icon={<FaUsers />}
-            title="Total Volunteers"
-            value={stats?.totalVolunteers || 0}
-            gradient="from-blue-500 to-blue-600"
-            href="/admin/volunteers"
-          />
-          <StatCard
-            icon={<FaUserCheck />}
-            title="Active This Month"
-            value={stats?.activeVolunteers || 0}
-            gradient="from-emerald-500 to-emerald-600"
-            href="/admin/volunteers"
-          />
-          <StatCard
-            icon={<FaFileAlt />}
-            title="Needs Review"
-            value={stats?.pendingApplications || 0}
-            gradient="from-amber-500 to-amber-600"
-            href="/admin/applications"
-          />
-          <StatCard
-            icon={<FaClock />}
-            title="Hours Logged"
-            value={`${stats?.totalHoursContributed || 0}h`}
-            gradient="from-purple-500 to-purple-600"
-          />
-        </div>
-
-        {/* Recent Applications */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Recent Applications</h2>
-              <p className="text-sm text-gray-500 mt-0.5">New volunteers waiting for review</p>
-            </div>
-            <Link href="/admin/applications" className="text-sm font-medium text-green-700 hover:text-green-800 transition-colors">
-              View all
-            </Link>
-          </div>
-
-          {recentApplications.length === 0 ? (
-            <div className="px-6 py-12 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-3">
-                <FaFileAlt className="text-gray-400" />
-              </div>
-              <p className="text-gray-500">No recent applications</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {recentApplications.map((app) => (
-                <div key={app._id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-green-700 to-green-800 flex items-center justify-center text-white font-medium text-sm">
-                        {app.fullName.split(' ').map(n => n[0]).join('')}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-gray-900 truncate">{app.fullName}</h3>
-                        <p className="text-sm text-gray-500 truncate">{app.email}</p>
-                        <div className="flex items-center gap-3 mt-2">
-                          <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                            {app.preferredRole}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            {format(new Date(app.createdAt), 'MMM dd, yyyy')}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <StatusBadge status={app.status} />
-
-                      <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                        <FaEllipsisV className="text-sm" />
-                      </button>
-                    </div>
-                  </div>
+        {recent.length === 0 ? (
+          <EmptyState icon={FileText} title="No applications yet" description="New volunteer applications will appear here." />
+        ) : (
+          <ul className="divide-y divide-stone-200">
+            {recent.map((app) => (
+              <li key={app._id} className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-stone-900">{app.fullName}</p>
+                  <p className="truncate text-sm text-stone-600">{app.email}</p>
+                  <p className="mt-1 text-sm text-stone-600">{app.preferredRole} · {formatDate(app.createdAt, 'short')}</p>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <StatusBadge status={app.status} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-        {/* Quick Actions */}
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/admin/applications" className="px-4 py-2 bg-green-700 text-white rounded-lg font-medium hover:bg-green-800 transition-colors shadow-sm inline-block">
-            Review Applications
-          </Link>
-          <Link href="/admin/volunteer-calls/create" className="px-4 py-2 bg-white border border-stone-300 text-stone-700 rounded-lg font-medium hover:bg-stone-50 transition-colors shadow-sm inline-block">
-            New Volunteer Call
-          </Link>
-          <Link href="/admin/volunteers" className="px-4 py-2 bg-white border border-stone-300 text-stone-700 rounded-lg font-medium hover:bg-stone-50 transition-colors shadow-sm inline-block">
-            View Volunteers
-          </Link>
-        </div>
-      </div>
-    </DashboardLayout>
-  );
-}
-
-function StatCard({ icon, title, value, gradient, href }: { icon: React.ReactNode; title: string; value: number | string; gradient: string; href?: string }) {
-  const inner = (
-    <div className={`bg-white rounded-xl p-5 shadow-sm border border-gray-200 transition-shadow ${href ? 'hover:shadow-md cursor-pointer' : ''}`}>
-      <div className="flex items-start justify-between mb-4">
-        <div className={`w-11 h-11 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center text-white shadow-sm`}>
-          {icon}
-        </div>
-      </div>
-      <div>
-        <p className="text-sm text-gray-600 mb-1">{title}</p>
-        <p className="text-2xl font-semibold text-gray-900">{value}</p>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Button href="/admin/volunteer-calls/create" variant="secondary">New volunteer call</Button>
+        <Button href="/admin/volunteers" variant="secondary">View volunteers</Button>
       </div>
     </div>
   );
-
-  if (href) {
-    return <Link href={href}>{inner}</Link>;
-  }
-  return inner;
 }
-

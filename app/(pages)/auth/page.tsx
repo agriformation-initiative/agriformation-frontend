@@ -1,153 +1,82 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { authService } from '@/services/authService';
 import { useAuthStore } from '@/store/authStore';
-import { ArrowRight } from 'lucide-react';
+import Logo from '@/components/ui/Logo';
+import Button from '@/components/ui/Button';
+import { TextField } from '@/components/ui/Field';
 
-export default function LoginPage() {
+const homeFor = (role: string) => (role === 'volunteer' ? '/volunteer/dashboard' : '/admin/dashboard');
+
+function SignInForm() {
   const router = useRouter();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const expired = useSearchParams().get('expired') === '1';
+  const { setAuth, initAuth, hydrated, isAuthenticated, user } = useAuthStore();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  useEffect(() => initAuth(), [initAuth]);
+  useEffect(() => {
+    if (hydrated && isAuthenticated && user) router.replace(homeFor(user.role));
+  }, [hydrated, isAuthenticated, user, router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+    setError('');
     try {
-      const response = await authService.login(formData.email, formData.password);
-      setAuth(response.data.user, response.data.token);
-      toast.success('Login successful!');
-
-      if (response.data.user.role === 'volunteer') {
-        router.push('/volunteer/dashboard');
-      } else {
-        router.push('/admin/dashboard');
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Login failed');
-    } finally {
+      const res = await authService.login(email.trim(), password);
+      setAuth(res.data.user, res.data.token);
+      toast.success('Signed in');
+      router.push(homeFor(res.data.user.role));
+    } catch (err) {
+      const status = (err as { response?: { status?: number } }).response?.status;
+      setError(
+        status === 401
+          ? 'That email and password do not match. Check them and try again.'
+          : 'We could not sign you in. Check your connection and try again.'
+      );
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      {/* Hero-style Header */}
-      <section className="pt-32 pb-20 px-5 md:px-8 bg-gradient-to-br from-amber-50/40 via-stone-50 to-emerald-50/30">
-        <div className="max-w-6xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-900/5 text-green-800 rounded text-sm font-medium mb-2 border border-emerald-900/10">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-700"></span>
-            Agriformation Admin & Volunteer Portal
-          </div>
-          <h1 className="text-3xl md:text-5xl font-bold text-stone-900 leading-tight tracking-tight mb-2">
-            Welcome Back
-          </h1>
-          <p className="text-xl text-stone-600 font-light max-w-2xl mx-auto leading-relaxed">
-            Sign in to manage programs, track impact, and continue transforming agricultural education in Nigeria.
-          </p>
-        </div>
-      </section>
+    <form onSubmit={submit} className="mt-8 space-y-5">
+      {expired && !error && (
+        <p role="status" className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+          Your session ended. Sign in again to continue.
+        </p>
+      )}
+      <TextField id="email" name="email" type="email" label="Email address" autoComplete="email" required
+        value={email} onChange={(e) => setEmail(e.target.value)} />
+      <TextField id="password" name="password" type="password" label="Password" autoComplete="current-password" required
+        value={password} onChange={(e) => setPassword(e.target.value)} />
+      {error && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+      <Button type="submit" fullWidth loading={loading}>Sign in</Button>
+    </form>
+  );
+}
 
-      {/* Login Form Card */}
-      <section className="px-5 md:px-8 -mt-12 relative z-10">
-        <div className="max-w-6xl mx-auto">
-          <div className="max-w-sm mx-auto">
-            <div className="bg-white rounded-sm shadow-xl border border-stone-200 overflow-hidden">
-              <div className="p-4 md:p-6 space-y-6">
-                <div className="text-center">
-                  <h2 className="text-3xl font-bold text-stone-900 tracking-tight">Sign In</h2>
-                  <p className="mt-2 text-stone-600">Access your dashboard</p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-stone-700 mb-2">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2 rounded border border-stone-300 focus:border-green-700 focus:ring-2 focus:ring-green-700/20 transition-all outline-none text-stone-900 placeholder-stone-400"
-                      placeholder="you@example.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-stone-700 mb-2">
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      id="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2 rounded border border-stone-300 focus:border-green-700 focus:ring-2 focus:ring-green-700/20 transition-all outline-none text-stone-900 placeholder-stone-400"
-                      placeholder="Enter your password"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full px-6 py-2 bg-green-700 text-white rounded font-medium hover:bg-green-800 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {loading ? (
-                      'Signing in...'
-                    ) : (
-                      <>
-                        Sign In <ArrowRight size={18} strokeWidth={2.5} />
-                      </>
-                    )}
-                  </button>
-                </form>
-
-                <div className="text-center pt-2">
-                  <Link
-                    href="/"
-                    className="text-sm text-green-700 hover:text-green-800 font-medium inline-flex items-center gap-2 group"
-                  >
-                    <ArrowRight size={16} className="rotate-180 group-hover:-translate-x-1 transition-transform" />
-                    Back to Home
-                  </Link>
-                </div>
-              </div>
-
-              {/* Subtle bottom accent */}
-              <div className="h-2 bg-gradient-to-r from-green-700 via-emerald-600 to-teal-600"></div>
-            </div>
-
-            {/* Optional: Small footer note */}
-            <p className="text-center mt-8 text-sm text-stone-500">
-              Protecting the future of Nigerian agriculture, one login at a time.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Extra bottom spacing */}
-      <div className="h-20"></div>
+export default function SignInPage() {
+  return (
+    <div className="flex items-center justify-center px-5 py-16 md:py-24">
+      <div className="w-full max-w-md rounded-xl bg-white p-8 md:p-10">
+        <Logo />
+        <h1 className="mt-8 text-3xl font-semibold">Sign in</h1>
+        <p className="mt-2 text-stone-600">For AgroNext volunteers and administrators.</p>
+        <Suspense fallback={null}>
+          <SignInForm />
+        </Suspense>
+        <Link href="/" className="mt-6 inline-flex min-h-11 items-center text-sm font-medium text-brand-700 hover:underline">
+          Back to home
+        </Link>
+      </div>
     </div>
   );
 }

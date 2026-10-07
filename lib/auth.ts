@@ -8,37 +8,33 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Add token to requests
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+api.interceptors.request.use((config) => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
-// Response interceptor - ONLY handle network/server errors
+// An expired or revoked token on a signed-in session sends the user back to sign in,
+// instead of leaving every dashboard call failing silently.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Don't touch auth state here - just log for debugging
-    if (error.response?.status === 401) {
-      console.warn('Unauthorized request - token may be invalid');
+    const isLoginCall = String(error.config?.url ?? '').includes('/auth/login');
+    if (error.response?.status === 401 && !isLoginCall && typeof window !== 'undefined') {
+      if (localStorage.getItem('token')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.assign('/auth?expired=1');
+      }
     }
     return Promise.reject(error);
   }
 );
 
-// Auth endpoints
-export const login = (data: { email: string; password: string }) =>
-  api.post('/auth/login', data);
+export const login = (data: { email: string; password: string }) => api.post('/auth/login', data);
 
 export const getMe = () => api.get('/auth/me');
 
-export const createAdmin = (data: any) =>
-  api.post('/auth/create-admin', data);
+export const createAdmin = (data: any) => api.post('/auth/register-admin', data);
 
 export default api;

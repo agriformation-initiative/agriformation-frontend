@@ -1,123 +1,95 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import DashboardLayout from '@/components/Layout/DashboardLayout';
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Users } from 'lucide-react';
 import { adminService } from '@/services/adminService';
 import { Volunteer } from '@/types/indexes';
-import { FaEye } from 'react-icons/fa';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { SelectField } from '@/components/ui/Field';
+import { Table, Th, Td, rowClass } from '@/components/ui/table';
+import { PageHeader, EmptyState, ErrorState, DashboardSkeleton } from '@/components/ui/dashboard';
 
 export default function VolunteersPage() {
-  const router = useRouter();
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
 
-  useEffect(() => {
-    loadVolunteers();
-  }, [statusFilter]);
-
-  const loadVolunteers = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setFailed(false);
     try {
-      const params = statusFilter ? { status: statusFilter } : {};
-      const response = await adminService.getAllVolunteers(params);
-      // the API returns items: Volunteer[]; use that (with a safe fallback)
-      setVolunteers(response.data.items ?? (response.data as any).volunteers ?? []);
-    } catch (error) {
-      console.error('Failed to load volunteers:', error);
+      const res = await adminService.getAllVolunteers(statusFilter ? { status: statusFilter } : {});
+      const data = res.data as unknown as { items?: Volunteer[]; volunteers?: Volunteer[] };
+      setVolunteers(data.items ?? data.volunteers ?? []);
+    } catch {
+      setFailed(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
 
-  if (loading) {
-    return (
-      <DashboardLayout role="admin">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-stone-600">Loading...</div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  useEffect(() => { load(); }, [load]);
+
+  if (loading && volunteers.length === 0 && !statusFilter) return <DashboardSkeleton />;
 
   return (
-    <DashboardLayout role="admin">
-      <div className="space-y-6 bg-stone-50 min-h-screen ">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-bold text-stone-900 tracking-tight">Volunteers</h1>
-            <p className="text-stone-600 mt-2 text-lg">Manage volunteer profiles</p>
+    <div className="mx-auto max-w-6xl">
+      <PageHeader
+        title="Volunteers"
+        description="Manage volunteer profiles."
+        action={
+          <div className="w-48">
+            <SelectField id="status-filter" label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="">All</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="on-hold">On hold</option>
+              <option value="rejected">Rejected</option>
+            </SelectField>
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-48 px-4 py-2.5 border border-stone-300 rounded focus:outline-none focus:ring-2 focus:ring-green-700 focus:border-transparent transition-all text-stone-900 bg-white font-medium"
-          >
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="on-hold">On Hold</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </div>
+        }
+      />
 
-        <div className="bg-white rounded-sm border border-stone-200 shadow-sm overflow-hidden">
+      {failed ? (
+        <ErrorState message="We could not load the volunteers." onRetry={load} />
+      ) : (
+        <div className="overflow-hidden rounded-xl bg-white" aria-busy={loading}>
           {volunteers.length === 0 ? (
-            <p className="text-stone-500 text-center py-12">No volunteers found</p>
+            <EmptyState icon={Users} title="No volunteers found" description="Accepted applications become volunteers." />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-stone-50 border-b border-stone-200">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-stone-700 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-stone-700 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-stone-700 uppercase tracking-wider">Role</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-stone-700 uppercase tracking-wider">Hours</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-stone-700 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-stone-700 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-200">
-                  {volunteers.map((volunteer) => {
-                    const user = typeof volunteer.user === 'object' ? volunteer.user : null;
-                    return (
-                      <tr key={volunteer._id} className="hover:bg-stone-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-stone-900 font-medium">
-                          {user?.fullName || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-stone-600">
-                          {user?.email || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-stone-600">
-                          {volunteer.preferredRole}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-stone-600">
-                          {volunteer.hoursContributed}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <StatusBadge status={volunteer.status} />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => router.push(`/admin/volunteers/${volunteer._id}`)}
-                            className="p-2 text-green-700 hover:bg-green-50 rounded transition-colors"
-                            title="View Details"
-                          >
-                            <FaEye />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <Table caption="Volunteers">
+              <thead>
+                <tr>
+                  <Th>Name</Th><Th>Role</Th><Th>Hours</Th><Th>Status</Th><Th><span className="sr-only">Actions</span></Th>
+                </tr>
+              </thead>
+              <tbody>
+                {volunteers.map((v) => {
+                  const user = typeof v.user === 'object' ? v.user : null;
+                  return (
+                    <tr key={v._id} className={rowClass}>
+                      <Td>
+                        <p className="font-medium text-stone-900">{user?.fullName || 'Unknown'}</p>
+                        <p className="text-sm text-stone-600">{user?.email}</p>
+                      </Td>
+                      <Td>{v.preferredRole}</Td>
+                      <Td className="tabular-nums">{v.hoursContributed}</Td>
+                      <Td><StatusBadge status={v.status} /></Td>
+                      <Td className="text-right">
+                        <Link href={`/admin/volunteers/${v._id}`} className="inline-flex min-h-11 items-center font-semibold text-brand-700 hover:underline">
+                          View<span className="sr-only"> {user?.fullName}</span>
+                        </Link>
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
           )}
         </div>
-      </div>
-    </DashboardLayout>
+      )}
+    </div>
   );
 }
-

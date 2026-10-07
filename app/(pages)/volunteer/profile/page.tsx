@@ -1,13 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/*eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
-import { useEffect, useState } from 'react';
-import DashboardLayout from '@/components/Layout/DashboardLayout';
+import { useCallback, useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { volunteerService } from '@/services/volunteerService';
 import { Volunteer } from '@/types/indexes';
-import toast from 'react-hot-toast';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import Button from '@/components/ui/Button';
+import { TextField, TextAreaField } from '@/components/ui/Field';
+import { PageHeader, ErrorState, DashboardSkeleton } from '@/components/ui/dashboard';
 
 const ROLES = [
   'School Gardens Assistant',
@@ -18,19 +17,50 @@ const ROLES = [
   'Other',
 ];
 
-const AVAILABILITY_OPTIONS = [
-  { value: 'weekdays', label: 'Weekdays Only' },
-  { value: 'weekends', label: 'Weekends Only' },
-  { value: 'both', label: 'Weekdays & Weekends' },
-  { value: 'flexible', label: 'Flexible / Any Time' },
+const AVAILABILITY = [
+  { value: 'weekdays', label: 'Weekdays only' },
+  { value: 'weekends', label: 'Weekends only' },
+  { value: 'both', label: 'Weekdays and weekends' },
+  { value: 'flexible', label: 'Flexible, any time' },
 ];
 
-export default function VolunteerProfile() {
-  const [volunteer, setVolunteer] = useState<Volunteer | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+const MIN_ABOUT = 50;
 
-  const [formData, setFormData] = useState({
+function RadioGroup({
+  legend, name, options, value, onChange,
+}: {
+  legend: string;
+  name: string;
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <fieldset className="rounded-xl bg-white p-6">
+      <legend className="float-left mb-4 w-full font-sans text-lg font-semibold">{legend}</legend>
+      <div className="clear-both grid gap-3 md:grid-cols-2">
+        {options.map((o) => (
+          <label
+            key={o.value}
+            className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-md border px-4 py-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-600 ${
+              value === o.value ? 'border-brand-700 bg-brand-50' : 'border-stone-300 hover:border-stone-400'
+            }`}
+          >
+            <input type="radio" name={name} value={o.value} checked={value === o.value} onChange={() => onChange(o.value)} className="h-5 w-5 accent-brand-700" />
+            <span className="font-medium text-stone-800">{o.label}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+export default function VolunteerProfile() {
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [aboutError, setAboutError] = useState('');
+  const [form, setForm] = useState({
     preferredRole: '',
     aboutYourself: '',
     skills: [] as string[],
@@ -38,202 +68,80 @@ export default function VolunteerProfile() {
     location: { state: '', lga: '' },
   });
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  const loadProfile = async () => {
+  const load = useCallback(async () => {
+    setFailed(false);
     try {
-      const response = await volunteerService.getProfile();
-      const v = response.data.volunteer;
-      setVolunteer(v);
-      setFormData({
+      const v: Volunteer = (await volunteerService.getProfile()).data.volunteer;
+      setForm({
         preferredRole: v.preferredRole || '',
         aboutYourself: v.aboutYourself || '',
         skills: v.skills || [],
         availability: v.availability || '',
         location: v.location || { state: '', lga: '' },
       });
-    } catch (error) {
-      toast.error('Failed to load profile');
+    } catch {
+      setFailed(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => { load(); }, [load]);
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (form.aboutYourself.trim().length < MIN_ABOUT) {
+      setAboutError(`Write at least ${MIN_ABOUT} characters about yourself.`);
+      document.getElementById('aboutYourself')?.focus();
+      return;
+    }
     setSaving(true);
     try {
-      await volunteerService.updateProfile(formData);
-      toast.success('Profile updated successfully!');
-      loadProfile();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update profile');
+      // An empty availability would fail the server's allowed-values check, so leave it out
+      const { availability, ...rest } = form;
+      await volunteerService.updateProfile({ ...rest, ...(availability && { availability }) } as Partial<Volunteer>);
+      toast.success('Profile saved');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { message?: string } } }).response?.data?.message || 'We could not save your profile. Try again.');
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
-    return (
-      <DashboardLayout role="volunteer">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-stone-600 text-lg">Loading your profile...</div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
+  if (failed) return <ErrorState message="We could not load your profile." onRetry={load} />;
 
   return (
-    <DashboardLayout role="volunteer">
-      <div className="max-w-4xl mx-auto space-y-10 py-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-4xl md:text-5xl font-bold text-stone-900 tracking-tight">
-            My Volunteer Profile
-          </h1>
-          <p className="text-xl text-stone-600 mt-3 font-light">
-            Help us match you with the perfect program role
-          </p>
+    <div className="mx-auto max-w-3xl">
+      <PageHeader title="My profile" description="Help us match you with the right role." />
+
+      <form onSubmit={submit} noValidate className="space-y-6">
+        <RadioGroup legend="Preferred role" name="preferredRole" options={ROLES.map((r) => ({ value: r, label: r }))}
+          value={form.preferredRole} onChange={(v) => setForm((p) => ({ ...p, preferredRole: v }))} />
+
+        <section className="rounded-xl bg-white p-6">
+          <TextAreaField id="aboutYourself" name="aboutYourself" label="About you" rows={6} value={form.aboutYourself} error={aboutError}
+            onChange={(e) => { setForm((p) => ({ ...p, aboutYourself: e.target.value })); setAboutError(''); }}
+            hint={`Why you want to volunteer and what you bring. ${form.aboutYourself.trim().length} of ${MIN_ABOUT} characters minimum.`} />
+        </section>
+
+        <RadioGroup legend="When are you available?" name="availability" options={AVAILABILITY}
+          value={form.availability} onChange={(v) => setForm((p) => ({ ...p, availability: v }))} />
+
+        <section className="rounded-xl bg-white p-6">
+          <h2 className="font-sans text-lg font-semibold">Your location</h2>
+          <div className="mt-4 grid gap-5 md:grid-cols-2">
+            <TextField id="state" label="State" placeholder="Rivers State" autoComplete="address-level1" value={form.location.state}
+              onChange={(e) => setForm((p) => ({ ...p, location: { ...p.location, state: e.target.value } }))} />
+            <TextField id="lga" label="Local government area" placeholder="Obio/Akpor" autoComplete="address-level2" value={form.location.lga}
+              onChange={(e) => setForm((p) => ({ ...p, location: { ...p.location, lga: e.target.value } }))} />
+          </div>
+        </section>
+
+        <div className="flex justify-end">
+          <Button type="submit" loading={saving}>Save profile</Button>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Preferred Role */}
-          <div className="bg-white border border-stone-200 rounded-sm shadow-sm p-8">
-            <h2 className="text-2xl font-bold text-stone-900 mb-6">Preferred Role</h2>
-            <div className="grid md:grid-cols-2 gap-5">
-              {ROLES.map((role) => (
-                <label
-                  key={role}
-                  className={`flex items-center gap-4 p-5 border rounded-sm cursor-pointer transition-all ${
-                    formData.preferredRole === role
-                      ? 'border-green-700 bg-emerald-50 shadow-md'
-                      : 'border-stone-300 hover:border-stone-400 hover:bg-stone-50'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="preferredRole"
-                    value={role}
-                    checked={formData.preferredRole === role}
-                    onChange={(e) => setFormData({ ...formData, preferredRole: e.target.value })}
-                    className="w-5 h-5 text-green-700 focus:ring-green-700"
-                  />
-                  <span className="font-medium text-stone-800">{role}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* About Yourself */}
-          <div className="bg-white border border-stone-200 rounded-sm shadow-sm p-8">
-            <h2 className="text-2xl font-bold text-stone-900 mb-6">Tell Us About Yourself</h2>
-            <textarea
-              value={formData.aboutYourself}
-              onChange={(e) => setFormData({ ...formData, aboutYourself: e.target.value })}
-              rows={7}
-              placeholder="Share your passion for agriculture, education, youth empowerment, or why you want to volunteer with Agriformation..."
-              className="w-full px-5 py-4 border border-stone-300 rounded-sm focus:border-green-700 focus:ring-2 focus:ring-green-700/20 transition-all resize-none text-stone-800 placeholder-stone-400"
-            />
-          </div>
-
-          {/* Availability */}
-          <div className="bg-white border border-stone-200 rounded-sm shadow-sm p-8">
-            <h2 className="text-2xl font-bold text-stone-900 mb-6">When Are You Available?</h2>
-            <div className="grid md:grid-cols-2 gap-5">
-              {AVAILABILITY_OPTIONS.map((opt) => (
-                <label
-                  key={opt.value}
-                  className={`flex items-center gap-4 p-5 border rounded-sm cursor-pointer transition-all ${
-                    formData.availability === opt.value
-                      ? 'border-green-700 bg-emerald-50 shadow-md'
-                      : 'border-stone-300 hover:border-stone-400 hover:bg-stone-50'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="availability"
-                    value={opt.value}
-                    checked={formData.availability === opt.value}
-                    onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
-                    className="w-5 h-5 text-green-700"
-                  />
-                  <span className="font-medium text-stone-800">{opt.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Location */}
-          <div className="bg-white border border-stone-200 rounded-sm shadow-sm p-8">
-            <h2 className="text-2xl font-bold text-stone-900 mb-6">Your Location</h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">State</label>
-                <input
-                  type="text"
-                  value={formData.location.state}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      location: { ...formData.location, state: e.target.value },
-                    })
-                  }
-                  placeholder="e.g. Rivers State"
-                  className="w-full px-5 py-3.5 border border-stone-300 rounded-sm focus:border-green-700 focus:ring-2 focus:ring-green-700/20 transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">LGA</label>
-                <input
-                  type="text"
-                  value={formData.location.lga}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      location: { ...formData.location, lga: e.target.value },
-                    })
-                  }
-                  placeholder="e.g. Obio/Akpor"
-                  className="w-full px-5 py-3.5 border border-stone-300 rounded-sm focus:border-green-700 focus:ring-2 focus:ring-green-700/20 transition-all"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Submit */}
-          <div className="flex justify-end pt-6">
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-3 px-8 py-4 bg-green-700 text-white rounded-sm font-semibold hover:bg-green-800 transition-all shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="animate-spin" size={20} />
-                  Saving Changes...
-                </>
-              ) : (
-                <>
-                  Save Profile Changes
-                  <ArrowRight size={20} />
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-
-        {/* Motivational Footer */}
-        <div className="text-center py-12 border-t border-stone-200 mt-16">
-          <p className="text-2xl font-light text-stone-700 italic max-w-3xl mx-auto leading-relaxed">
-            “Your time, skills, and passion are the seeds we plant today
-            <br className="hidden md:block" />
-            to grow a generation that proudly chooses agriculture tomorrow.”
-          </p>
-          <p className="text-green-700 font-semibold mt-4 text-lg">— Agriformation Team</p>
-        </div>
-      </div>
-    </DashboardLayout>
+      </form>
+    </div>
   );
 }

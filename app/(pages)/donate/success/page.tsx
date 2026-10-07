@@ -1,121 +1,46 @@
-// app/donate/success/page.tsx
-'use client';
-import React, { useEffect, useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { CheckCircle, ArrowRight, Home } from 'lucide-react';
+import type { Metadata } from 'next';
+import { CheckCircle2 } from 'lucide-react';
+import Button from '@/components/ui/Button';
+import { SITE } from '@/lib/site';
 
-function SuccessContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const [sessionId, setSessionId] = useState<string | null>(null);
+export const metadata: Metadata = { title: 'Thank you' };
 
-  useEffect(() => {
-    const id = searchParams.get('session_id');
-    setSessionId(id);
-  }, [searchParams]);
+export default async function DonateSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ session_id?: string }>;
+}) {
+  const { session_id: sessionId } = await searchParams;
 
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center px-5 py-12">
-      <div className="max-w-2xl w-full">
-        <div className="bg-white p-8 md:p-12 rounded-sm shadow-xl border border-stone-200 text-center space-y-6">
-          {/* Success Icon */}
-          <div className="flex justify-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle size={48} className="text-green-700" />
-            </div>
-          </div>
+    <div className="px-5 py-16 md:px-8 md:py-24">
+      <div className="mx-auto max-w-xl rounded-xl bg-white p-8 text-center md:p-12">
+        <CheckCircle2 size={48} className="mx-auto text-brand-700" aria-hidden="true" />
+        <h1 className="mt-6 text-3xl font-semibold md:text-4xl">Thank you for your donation!</h1>
+        <p className="mt-4 text-lg text-stone-700">
+          Your gift will help students in Nigeria see agriculture as a career worth choosing. A receipt will be
+          sent to the email you used at checkout.
+        </p>
 
-          {/* Thank You Message */}
-          <div className="space-y-3">
-            <h1 className="text-3xl md:text-4xl font-bold text-stone-900">
-              Thank You for Your Donation!
-            </h1>
-            <p className="text-lg text-stone-600 leading-relaxed max-w-lg mx-auto">
-              Your generosity will help transform agricultural education and inspire the next generation of farmers and innovators in Nigeria.
-            </p>
-          </div>
+        {sessionId && (
+          <p className="mt-6 break-all rounded-md bg-stone-100 p-3 text-sm text-stone-700">
+            Reference: <span className="font-mono">{sessionId}</span>
+          </p>
+        )}
 
-          {/* Session ID (optional) */}
-          {sessionId && (
-            <div className="bg-stone-50 border border-stone-200 rounded p-4">
-              <p className="text-sm text-stone-500">Transaction ID</p>
-              <p className="text-xs font-mono text-stone-700 break-all">{sessionId}</p>
-            </div>
-          )}
-
-          {/* What Happens Next */}
-          <div className="pt-6 space-y-4 text-left border-t border-stone-200">
-            <h2 className="text-xl font-bold text-stone-900 text-center">What Happens Next?</h2>
-            <ul className="space-y-3 text-stone-600">
-              <li className="flex items-start gap-3">
-                <CheckCircle size={20} className="text-green-700 flex-shrink-0 mt-0.5" />
-                <span>You&apos;ll receive a confirmation email with your receipt within a few minutes</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <CheckCircle size={20} className="text-green-700 flex-shrink-0 mt-0.5" />
-                <span>Your donation will be put to work immediately in our programs</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <CheckCircle size={20} className="text-green-700 flex-shrink-0 mt-0.5" />
-                <span>We&apos;ll keep you updated on the impact your contribution is making</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 pt-6">
-            <button
-              onClick={() => router.push('/')}
-              className="flex-1 px-6 py-3 bg-green-800 text-white rounded font-medium hover:bg-green-900 transition-colors flex items-center justify-center gap-2"
-            >
-              <Home size={18} />
-              Return Home
-            </button>
-            <button
-              onClick={() => router.push('/programs')}
-              className="flex-1 px-6 py-3 bg-white text-green-800 rounded font-medium border-2 border-green-800 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
-            >
-              View Programs
-              <ArrowRight size={18} />
-            </button>
-          </div>
-
-          {/* Social Share (Optional) */}
-          <div className="pt-6 border-t border-stone-200">
-            <p className="text-sm text-stone-600 mb-4">
-              Help us reach more people by sharing our mission
-            </p>
-            <div className="flex justify-center gap-3">
-              <button className="px-4 py-2 bg-stone-100 text-stone-700 rounded font-medium hover:bg-stone-200 transition-colors text-sm">
-                Share on Twitter
-              </button>
-              <button className="px-4 py-2 bg-stone-100 text-stone-700 rounded font-medium hover:bg-stone-200 transition-colors text-sm">
-                Share on Facebook
-              </button>
-            </div>
-          </div>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Button href="/">Back to home</Button>
+          <Button href="/programs" variant="secondary">See the programs</Button>
         </div>
 
-        {/* Additional Info */}
-        <p className="text-center text-sm text-stone-500 mt-6">
-          Questions about your donation? Contact us at{' '}
-          <a href="mailto:donations@example.com" className="text-green-700 hover:underline">
-            donations@example.com
+        <p className="mt-8 text-sm text-stone-600">
+          Questions about your donation? Write to{' '}
+          <a href={`mailto:${SITE.email}`} className="text-brand-700 underline underline-offset-4">
+            {SITE.email}
           </a>
+          .
         </p>
       </div>
     </div>
-  );
-}
-
-export default function DonateSuccessPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
-        <div className="text-stone-600">Loading...</div>
-      </div>
-    }>
-      <SuccessContent />
-    </Suspense>
   );
 }
