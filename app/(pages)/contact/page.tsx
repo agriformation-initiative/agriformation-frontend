@@ -3,7 +3,7 @@ import { Mail, ArrowUpRight } from 'lucide-react';
 import PageHero from '@/components/ui/PageHero';
 import Button from '@/components/ui/Button';
 import SocialIcon from '@/components/shared/SocialIcon';
-import ContactForm from './ContactForm';
+import InquiryForm from '@/components/shared/InquiryForm';
 import { SITE } from '@/lib/site';
 
 export const metadata: Metadata = {
@@ -63,7 +63,13 @@ export default function ContactPage() {
 
           <div id="contact-form" className="lg:col-span-3">
             <h2 className="mb-6 text-3xl font-semibold">Send a message</h2>
-            <ContactForm />
+            <InquiryForm
+              type="contact"
+              submitLabel="Send message"
+              messageLabel="Message"
+              successTitle="Message sent"
+              successText="Thank you. A member of the team will reply to the email address you gave."
+            />
           </div>
         </div>
       </section>

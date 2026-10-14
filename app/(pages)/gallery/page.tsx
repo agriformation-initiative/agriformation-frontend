@@ -108,7 +108,7 @@ export default async function GalleryPage({
 
       <section className="bg-brand-50 px-5 py-16 md:px-8 md:py-20">
         <div className="mx-auto max-w-6xl">
-          <SectionHeader eyebrow="Student voices" title="What students said" />
+          <SectionHeader eyebrow="Student voices" title="What students said after our first farm excursion" />
           <ul className="mt-10 grid gap-8 md:grid-cols-3">
             {QUOTES.map((q) => (
               <li key={q.quote}>

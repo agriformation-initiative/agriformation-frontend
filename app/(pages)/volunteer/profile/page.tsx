@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { volunteerService } from '@/services/volunteerService';
 import { Volunteer } from '@/types/indexes';
 import Button from '@/components/ui/Button';
+import ChangePasswordForm from '@/components/shared/ChangePasswordForm';
 import { TextField, TextAreaField } from '@/components/ui/Field';
 import { PageHeader, ErrorState, DashboardSkeleton } from '@/components/ui/dashboard';
 
@@ -142,6 +143,11 @@ export default function VolunteerProfile() {
           <Button type="submit" loading={saving}>Save profile</Button>
         </div>
       </form>
+
+      <section className="mt-10 rounded-xl bg-white p-6" aria-labelledby="password-heading">
+        <h2 id="password-heading" className="mb-5 font-sans text-lg font-semibold">Change password</h2>
+        <ChangePasswordForm />
+      </section>
     </div>
   );
 }

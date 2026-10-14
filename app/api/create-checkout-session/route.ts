@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
 
 const MIN_AMOUNT_NGN = 1000;
 const MAX_AMOUNT_NGN = 10_000_000;
+const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
+/** Starts a one-time Paystack payment and returns the hosted checkout URL. */
 export async function POST(request: Request) {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey) {
     return NextResponse.json(
-      { message: 'Online donations are not set up yet. Please contact us to give.' },
+      { message: 'Online donations are not set up yet. Please use the bank transfer details or contact us to give.' },
       { status: 503 }
     );
   }
 
-  let body: { amount?: unknown; donationType?: unknown };
+  let body: { amount?: unknown; email?: unknown; name?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -21,36 +22,40 @@ export async function POST(request: Request) {
   }
 
   const amount = Number(body.amount);
-  const monthly = body.donationType === 'monthly';
+  const email = typeof body.email === 'string' ? body.email.trim() : '';
+  const name = typeof body.name === 'string' ? body.name.trim().slice(0, 120) : '';
+
+  if (!EMAIL_RE.test(email)) {
+    return NextResponse.json({ message: 'Enter a valid email address so we can send your receipt.' }, { status: 400 });
+  }
   if (!Number.isFinite(amount) || amount < MIN_AMOUNT_NGN || amount > MAX_AMOUNT_NGN) {
     return NextResponse.json(
-      { message: `Enter an amount between ₦${MIN_AMOUNT_NGN.toLocaleString()} and ₦${MAX_AMOUNT_NGN.toLocaleString()}.` },
+      { message: `Enter an amount between ₦${MIN_AMOUNT_NGN.toLocaleString('en-NG')} and ₦${MAX_AMOUNT_NGN.toLocaleString('en-NG')}.` },
       { status: 400 }
     );
   }
 
   try {
-    const stripe = new Stripe(secretKey);
     const origin = new URL(request.url).origin;
-    const session = await stripe.checkout.sessions.create({
-      mode: monthly ? 'subscription' : 'payment',
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: 'ngn',
-            unit_amount: Math.round(amount * 100),
-            product_data: { name: monthly ? 'Monthly donation to AgroNext' : 'Donation to AgroNext' },
-            ...(monthly && { recurring: { interval: 'month' as const } }),
-          },
-        },
-      ],
-      success_url: `${origin}/donate/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/donate`,
+    const res = await fetch('https://api.paystack.co/transaction/initialize', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        amount: Math.round(amount * 100), // Paystack counts in kobo
+        currency: 'NGN',
+        callback_url: `${origin}/donate/success`,
+        metadata: { purpose: 'donation', donor_name: name },
+      }),
     });
-    return NextResponse.json({ url: session.url });
+    const data = await res.json();
+    if (!res.ok || !data.status || !data.data?.authorization_url) {
+      console.error('Paystack initialize failed:', data?.message);
+      return NextResponse.json({ message: 'We could not start the payment. Please try again.' }, { status: 502 });
+    }
+    return NextResponse.json({ url: data.data.authorization_url });
   } catch (error) {
-    console.error('Stripe checkout error:', error);
+    console.error('Paystack initialize error:', error);
     return NextResponse.json({ message: 'We could not start the payment. Please try again.' }, { status: 502 });
   }
 }

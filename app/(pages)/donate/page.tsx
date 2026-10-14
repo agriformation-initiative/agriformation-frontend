@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Users, BookOpen, Sprout } from 'lucide-react';
 import PageHero from '@/components/ui/PageHero';
 import SectionHeader from '@/components/ui/SectionHeader';
 import Button from '@/components/ui/Button';
 import DonateForm from './DonateForm';
+import { SITE } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Donate',
@@ -49,11 +51,28 @@ export default function DonatePage() {
           <SectionHeader
             eyebrow="Give"
             title="Make a donation"
-            description="In 2024, we took 83 students on a farm excursion that changed how they see agriculture. With your help we can reach many more."
+            description="Your gift pays for farm excursions, school gardens and learning materials that change how students see agriculture."
           />
+          <p className="mt-3">
+            <Link href="/transparency" className="font-medium text-brand-700 underline underline-offset-4">See what gifts pay for</Link>
+          </p>
           <div className="mt-10">
             <DonateForm />
           </div>
+
+          {SITE.bank.bankName && SITE.bank.accountName && SITE.bank.accountNumber && (
+            <section className="mt-8 rounded-xl bg-white p-6 md:p-8" aria-labelledby="transfer-heading">
+              <h2 id="transfer-heading" className="font-sans text-lg font-semibold">Prefer a bank transfer?</h2>
+              <dl className="mt-4 grid gap-4 sm:grid-cols-3">
+                <div><dt className="text-sm text-stone-600">Bank</dt><dd className="font-medium text-stone-900">{SITE.bank.bankName}</dd></div>
+                <div><dt className="text-sm text-stone-600">Account name</dt><dd className="font-medium text-stone-900">{SITE.bank.accountName}</dd></div>
+                <div><dt className="text-sm text-stone-600">Account number</dt><dd className="font-medium tabular-nums text-stone-900">{SITE.bank.accountNumber}</dd></div>
+              </dl>
+              <p className="mt-4 text-sm text-stone-600">
+                Email {SITE.email} after you pay so we can send you a receipt.
+              </p>
+            </section>
+          )}
         </div>
       </section>
     </>

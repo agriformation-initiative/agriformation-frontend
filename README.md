@@ -17,7 +17,12 @@ Open http://localhost:3000.
 | Variable | Purpose |
 | --- | --- |
 | `NEXT_PUBLIC_API_URL` | Backend API base URL, including `/api` (default `http://localhost:5000/api`) |
-| `STRIPE_SECRET_KEY` | Server-side Stripe key for `/donate`. Without it the donate form shows a clear "not set up yet" message |
+| `PAYSTACK_SECRET_KEY` | Server-side Paystack key for `/donate`. Without it the form says online donations are not set up yet |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | Public contact address shown across the site (your Zoho address) |
+| `NEXT_PUBLIC_REGISTRATION_NUMBER` | Optional. Your CAC number. Shown in the footer and on `/transparency` when set |
+| `NEXT_PUBLIC_BANK_NAME`, `NEXT_PUBLIC_BANK_ACCOUNT_NAME`, `NEXT_PUBLIC_BANK_ACCOUNT_NUMBER` | Optional. When all three are set, the donate page shows bank transfer details |
+
+Partners listed on `/transparency` come from `PARTNERS` in `lib/site.ts`.
 
 ## Structure
 

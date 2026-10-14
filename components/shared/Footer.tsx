@@ -2,8 +2,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import SocialIcon from '@/components/shared/SocialIcon';
-import { NAV_LINKS, SITE, isAppShellPath } from '@/lib/site';
-import Image from 'next/image'
+import { FOOTER_LINKS, NAV_LINKS, SITE, isAppShellPath } from '@/lib/site';
+import Image from 'next/image';
 
 const PROGRAMS = [
   'School Gardens & Agri-Clubs',
@@ -21,7 +21,9 @@ export const Footer = () => {
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-5">
-            <Image src="/images/agronext.png" alt="Logo" width={100} height={40} />
+           <Link href="/" className="mb-5 inline-block">
+              <Image src="/images/agronext.png" alt="Logo" width={100} height={100}  className="object-fit w-42 h-auto"/>
+            </Link>
             <p className="mt-5 max-w-sm text-sm leading-relaxed text-brand-200">
               {SITE.tagline}, through practical learning, mentorship and community engagement.
             </p>
@@ -37,16 +39,13 @@ export const Footer = () => {
                   </Link>
                 </li>
               ))}
-              <li>
-                <Link href="/volunteer" className="inline-flex min-h-8 items-center text-sm text-brand-200 hover:text-white">
-                  Volunteer
-                </Link>
-              </li>
-              <li>
-                <Link href="/donate" className="inline-flex min-h-8 items-center text-sm text-brand-200 hover:text-white">
-                  Donate
-                </Link>
-              </li>
+              {FOOTER_LINKS.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="inline-flex min-h-8 items-center text-sm text-brand-200 hover:text-white">
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </nav>
 
@@ -83,8 +82,12 @@ export const Footer = () => {
           </div>
         </div>
 
-        <div className="mt-14 border-t border-brand-900 pt-8 text-sm text-brand-300">
-          <p>&copy; {new Date().getFullYear()} {SITE.fullName}. All rights reserved.</p>
+        <div className="mt-14 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-brand-900 pt-8 text-sm text-brand-300">
+          <p>
+            &copy; {new Date().getFullYear()} {SITE.fullName}. All rights reserved.
+            {SITE.registration && <> Registration no. {SITE.registration}.</>}
+          </p>
+          <Link href="/privacy" className="inline-flex min-h-8 items-center hover:text-white">Privacy policy</Link>
         </div>
       </div>
     </footer>

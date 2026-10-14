@@ -5,6 +5,7 @@ import { ArrowRight, Eye, Target, Heart } from 'lucide-react';
 import PageHero from '@/components/ui/PageHero';
 import SectionHeader from '@/components/ui/SectionHeader';
 import CtaBand from '@/components/ui/CtaBand';
+import RecentWork from '@/components/shared/RecentWork';
 import Button from '@/components/ui/Button';
 
 export const metadata: Metadata = {
@@ -53,19 +54,21 @@ export default function AboutPage() {
               <p>
                 There, students explored poultry, aquaculture, greenhouses, orchards and agro-processing
                 machinery. They left seeing agriculture as a career of <strong>innovation and dignity</strong>.
-                That day became the start of this initiative.
+                That day became the start of this initiative, and we have kept working with schools since.
               </p>
             </div>
             <Link
               href="/gallery"
               className="group mt-6 inline-flex min-h-11 items-center gap-2 font-semibold text-brand-700 hover:text-brand-900"
             >
-              See the 2024 excursion
+              See our photo gallery
               <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" aria-hidden="true" />
             </Link>
           </div>
         </div>
       </section>
+
+      <RecentWork heading="What we have been doing" />
 
       <section className="px-5 py-20 md:px-8 md:py-24">
         <div className="mx-auto max-w-6xl">
